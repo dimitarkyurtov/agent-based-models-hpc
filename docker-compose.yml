@@ -1,0 +1,15 @@
+version: '3.8'
+
+services:
+  mpi-nvidia:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: mpi-nvidia-ubuntu:latest
+    container_name: mpi-nvidia-dev
+    volumes:
+      - .:/workspace
+      - ./build:/workspace/build
+    working_dir: /workspace
+    stdin_open: true
+    tty: true

@@ -1,0 +1,37 @@
+# Build artifacts
+build/
+*.o
+*.a
+*.so
+
+# IDE and editor files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Git
+.git/
+.gitignore
+
+# Documentation
+*.md
+README.md
+
+# CI/CD
+.github/
+.gitlab-ci.yml
+
+# Claude
+.claude/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.egg-info/
