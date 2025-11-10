@@ -13,6 +13,7 @@ A C++ library that abstracts the complexity of running agent-based model simulat
 ├── tests/                 # Unit tests (Google Test)
 ├── .clang-format         # Code formatting configuration (Google style)
 ├── .clang-tidy           # Static analysis configuration
+├── .githooks/            # Shared git hooks (pre-push checks)
 └── .github/workflows/    # CI/CD workflows
 ```
 
@@ -170,6 +171,37 @@ find lib -name '*.cpp' | xargs clang-tidy -p build
 find lib example -name '*.cpp' | xargs clang-tidy -p build
 ```
 
+## Git Hooks
+
+The project includes git hooks to ensure code quality before pushing. These hooks automatically run formatting checks, linting, and tests.
+
+### Setup
+
+After cloning the repository, configure git to use the shared hooks:
+
+```bash
+git config core.hooksPath .githooks
+```
+
+This needs to be done only once per clone.
+
+### Pre-push Hook
+
+The pre-push hook runs automatically before every push and performs:
+1. Code formatting verification (clang-format)
+2. Static analysis (clang-tidy)
+3. Unit tests (ctest)
+
+If any check fails, the push will be blocked until the issues are fixed.
+
+### Manual Testing
+
+To test the pre-push hook without actually pushing:
+
+```bash
+.githooks/pre-push
+```
+
 ## CI/CD
 
 The project uses GitHub Actions for continuous integration. The CI pipeline runs entirely inside Docker containers on Ubuntu latest:
@@ -216,12 +248,13 @@ int main() {
 ## Contributing
 
 1. Fork the repository
-2. Create a feature branch
-3. Make your changes
-4. Format your code: `clang-format -i <files>`
-5. Run tests: `cd build && ctest`
-6. Run static analysis: `clang-tidy <files> -p build`
-7. Submit a pull request
+2. Clone and set up git hooks: `git config core.hooksPath .githooks`
+3. Create a feature branch
+4. Make your changes
+5. Format your code: `clang-format -i <files>`
+6. Run tests: `cd build && ctest`
+7. Run static analysis: `clang-tidy <files> -p build`
+8. Submit a pull request (pre-push hooks will run automatically)
 
 ## License
 

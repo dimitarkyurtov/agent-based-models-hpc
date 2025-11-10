@@ -1,0 +1,28 @@
+#!/bin/bash
+
+set -e
+
+echo "Running pre-push checks..."
+
+# Run formatter check
+echo "Checking code formatting..."
+if ! find lib example tests -name '*.cpp' -o -name '*.h' | xargs clang-format --dry-run -Werror; then
+    echo "❌ Code formatting check failed. Run: make format"
+    exit 1
+fi
+
+# Run linter
+echo "Running linter..."
+if ! find lib example -name '*.cpp' | xargs clang-tidy -p build; then
+    echo "❌ Linter check failed. Fix the issues reported above."
+    exit 1
+fi
+
+# Run tests
+echo "Running tests..."
+if ! ctest --test-dir build --output-on-failure; then
+    echo "❌ Tests failed."
+    exit 1
+fi
+
+echo "✅ All pre-push checks passed!"
