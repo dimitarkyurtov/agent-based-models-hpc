@@ -1,7 +1,7 @@
 #ifndef MYLIB_CALCULATOR_H
 #define MYLIB_CALCULATOR_H
 
-namespace mylib {
+namespace parallel_abm {
 
 class Calculator {
  public:
@@ -25,6 +25,6 @@ class Calculator {
   mutable double last_result_ = 0.0;
 };
 
-}  // namespace mylib
+}  // namespace parallel_abm
 
 #endif  // MYLIB_CALCULATOR_H

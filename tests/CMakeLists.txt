@@ -15,16 +15,16 @@ FetchContent_MakeAvailable(googletest)
 include(GoogleTest)
 
 # Test executable
-add_executable(mylib_tests
+add_executable(ParallelABM_tests
   test_calculator.cpp
 )
 
 # Link against the library and Google Test
-target_link_libraries(mylib_tests
+target_link_libraries(ParallelABM_tests
   PRIVATE
-    mylib
+    ParallelABM
     GTest::gtest_main
 )
 
 # Discover tests
-gtest_discover_tests(mylib_tests)
+gtest_discover_tests(ParallelABM_tests)

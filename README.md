@@ -138,7 +138,7 @@ cd build && ctest --verbose
 cd build && ctest --output-on-failure
 
 # Run specific test
-./build/tests/mylib_tests --gtest_filter=CalculatorTest.AddPositiveNumbers
+./build/tests/ParallelABM_tests --gtest_filter=CalculatorTest.AddPositiveNumbers
 ```
 
 ## Code Formatting
@@ -227,7 +227,7 @@ Note: The CI only builds the application; it does not run tests or execute the c
 add_subdirectory(path/to/agent-based-models-hpc)
 
 # Link against your target
-target_link_libraries(your_target PRIVATE mylib)
+target_link_libraries(your_target PRIVATE ParallelABM)
 ```
 
 ### In Your Code
@@ -236,7 +236,7 @@ target_link_libraries(your_target PRIVATE mylib)
 #include "calculator.h"
 
 int main() {
-  mylib::Calculator calc;
+  parallel_abm::Calculator calc;
 
   int result = calc.Add(10, 5);
   std::cout << "10 + 5 = " << result << std::endl;

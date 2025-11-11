@@ -2,9 +2,9 @@
 
 #include <stdexcept>
 
-#include "mylib/calculator.h"
+#include "ParallelABM/calculator.h"
 
-namespace mylib {
+namespace parallel_abm {
 namespace {
 
 class CalculatorTest : public ::testing::Test {
@@ -78,4 +78,4 @@ TEST_F(CalculatorTest, LastResultIsUpdatedAfterEachOperation) {
 }
 
 }  // namespace
-}  // namespace mylib
+}  // namespace parallel_abm

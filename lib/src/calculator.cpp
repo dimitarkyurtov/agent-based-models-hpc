@@ -1,8 +1,8 @@
-#include "mylib/calculator.h"
+#include "ParallelABM/calculator.h"
 
 #include <stdexcept>
 
-namespace mylib {
+namespace parallel_abm {
 
 int Calculator::Add(int lhs, int rhs) const {
   last_result_ = static_cast<double>(lhs + rhs);
@@ -29,4 +29,4 @@ double Calculator::Divide(double lhs, double rhs) const {
 
 double Calculator::GetLastResult() const { return last_result_; }
 
-}  // namespace mylib
+}  // namespace parallel_abm

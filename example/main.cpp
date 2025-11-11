@@ -1,10 +1,10 @@
 #include <iostream>
 #include <stdexcept>
 
-#include "mylib/calculator.h"
+#include "ParallelABM/calculator.h"
 
 int main() {
-  const mylib::Calculator kCalc;
+  const parallel_abm::Calculator kCalc;
 
   std::cout << "Calculator Example Application\n";
   std::cout << "==============================\n\n";
