@@ -1,0 +1,10 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(xargs clang-tidy -p /Users/dkyurtov/workspace/eductation/hpc/master-thesis/agent-based-models-hpc/build)",
+      "Bash(xargs clang-tidy -p build)"
+    ],
+    "deny": [],
+    "ask": []
+  }
+}

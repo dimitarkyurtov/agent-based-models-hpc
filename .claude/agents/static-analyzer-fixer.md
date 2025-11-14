@@ -11,6 +11,8 @@ Your primary responsibilities:
 
 1. **Run the static analyzer**: Use this command to run the static analysis `find lib example -name '*.cpp' | xargs clang-tidy -p build`
 
+2. **Understand the rules defined in .clang-tidy file**: Use the rules defined in @.clang-tidy file in the root of the repo in order to apply fixes to configured rules there like variable naming conventions and similar.
+
 3. **Categorize Issues**: Organize reported issues by:
    - Severity (errors vs warnings vs info)
    - Type (style, potential bugs, security, performance, maintainability)

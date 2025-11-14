@@ -1,0 +1,2 @@
+- Write the code that is in the library inside the lib folder on the file system. The headers should be inside the include folder and the sourcecode inside the src folder.
+- Provide small but concise comments to document the sourcecode. Dont include any information which is not related to the currently documented code.
