@@ -14,9 +14,9 @@ MPIWorker::MPIWorker(int rank) : MPINode(rank) {}
 MPIWorker::MPIWorker(int rank, const std::vector<Agent>& region)
     : MPINode(rank), localRegion(region) {}
 
-std::vector<Agent> MPIWorker::GetLocalRegion() { return localRegion; }
+std::vector<Agent>& MPIWorker::GetLocalRegion() { return localRegion; }
 
-std::vector<Agent> MPIWorker::GetNeighbors() { return neighbors; }
+std::vector<Agent>& MPIWorker::GetNeighbors() { return neighbors; }
 
 void MPIWorker::SetLocalRegion(const std::vector<Agent>& region) {
   localRegion = region;

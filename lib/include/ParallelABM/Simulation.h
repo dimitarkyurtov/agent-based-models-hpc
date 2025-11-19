@@ -7,6 +7,7 @@
 #include <utility>
 
 #include "Agent.h"
+#include "Environment.h"
 #include "Logger.h"
 #include "MPICoordinator.h"
 #include "MPINode.h"
@@ -19,19 +20,18 @@
 template <typename ModelType>
 class Simulation {
  public:
-  ModelType model;                   // Agent interaction model
-  std::unique_ptr<MPINode> mpiNode;  // MPI node (coordinator or worker)
+  ModelType model;                        // Agent interaction model
+  std::unique_ptr<MPINode> mpiNode;       // MPI node (coordinator or worker)
+  ParallelABM::Environment& environment;  // Compute resource environment
 
   // Initialize MPI, space, model, and calculate this process's region
   Simulation(int& argc, char**& argv, std::unique_ptr<Space> space,
-             const ModelType& model);
+             const ModelType& model, ParallelABM::Environment& environment);
 
-  // Copy computation results from device to host memory
-  virtual void CopyBackToHost() = 0;
-
-  // Launch model computation on agent subset with neighbors
-  virtual void LaunchModel(Agent* agents, int size, Agent* neighbors,
-                           int neighborSize) = 0;
+  // Launch model computation on agent subset with neighbors.
+  // Copies the agents back to the local region after execution.
+  virtual void LaunchModel(std::vector<Agent>& agents,
+                           std::vector<Agent>& neighbors) = 0;
 
   // Execute simulation for given number of timesteps
   void Start(unsigned int timesteps);
@@ -54,8 +54,9 @@ class Simulation {
 template <typename ModelType>
 Simulation<ModelType>::Simulation(int& argc, char**& argv,
                                   std::unique_ptr<Space> space,
-                                  const ModelType& model)
-    : model(std::move(model)), mpiNode(nullptr) {
+                                  const ModelType& model,
+                                  ParallelABM::Environment& environment)
+    : model(std::move(model)), mpiNode(nullptr), environment(environment) {
   MPI_Init(&argc, &argv);
 
   int rank = 0;
@@ -99,11 +100,9 @@ void Simulation<ModelType>::Start(unsigned int timesteps) {
       worker->ReceiveNeighbors();
     }
 
-    std::vector<Agent> local_region = worker->GetLocalRegion();
-    std::vector<Agent> neighbors = worker->GetNeighbors();
-    LaunchModel(local_region.data(), static_cast<int>(local_region.size()),
-                neighbors.data(), static_cast<int>(neighbors.size()));
-    CopyBackToHost();
+    std::vector<Agent>& local_region = worker->GetLocalRegion();
+    std::vector<Agent>& neighbors = worker->GetNeighbors();
+    LaunchModel(local_region, neighbors);
 
     if (coordinator != nullptr) {
       coordinator->ReceiveLocalRegionsFromWorkers();

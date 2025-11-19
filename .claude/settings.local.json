@@ -3,7 +3,8 @@
     "allow": [
       "Bash(xargs clang-tidy -p /Users/dkyurtov/workspace/eductation/hpc/master-thesis/agent-based-models-hpc/build)",
       "Bash(xargs clang-tidy -p build)",
-      "Bash(xargs clang-tidy -p build --quiet)"
+      "Bash(xargs clang-tidy -p build --quiet)",
+      "mcp__context7__get-library-docs"
     ],
     "deny": [],
     "ask": []

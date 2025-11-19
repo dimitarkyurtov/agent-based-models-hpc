@@ -7,6 +7,7 @@ add_library(ParallelABM STATIC
   src/MPINode.cpp
   src/MPIWorker.cpp
   src/MPICoordinator.cpp
+  src/EnvironmentSlurm.cpp
 )
 
 # Set C++ standard to C++20 (required for std::span)

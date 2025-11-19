@@ -37,13 +37,13 @@ class MPIWorker : public MPINode {
    * @brief Gets the local region of agents.
    * @return The local region.
    */
-  std::vector<Agent> GetLocalRegion();
+  std::vector<Agent>& GetLocalRegion();
 
   /**
    * @brief Gets the neighbor agents.
    * @return The neighbor agents.
    */
-  std::vector<Agent> GetNeighbors();
+  std::vector<Agent>& GetNeighbors();
 
   /**
    * @brief Sets the local region of agents.
