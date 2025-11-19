@@ -7,6 +7,7 @@
 #include <utility>
 
 #include "Agent.h"
+#include "Logger.h"
 #include "MPICoordinator.h"
 #include "MPINode.h"
 #include "MPIWorker.h"
@@ -62,12 +63,21 @@ Simulation<ModelType>::Simulation(int& argc, char**& argv,
   MPI_Comm_rank(MPI_COMM_WORLD, &rank);
   MPI_Comm_size(MPI_COMM_WORLD, &num_processes);
 
+  // Initialize Logger with MPI rank and world size
+  ParallelABM::Logger::getInstance().initialize(rank, num_processes);
+  ParallelABM::Logger::getInstance().info(
+      "Simulation: Initialized with rank " + std::to_string(rank) + " of " +
+      std::to_string(num_processes) + " processes");
+
   if (rank == 0) {
     // Move ownership of space to MPICoordinator
     mpiNode =
         std::make_unique<MPICoordinator>(rank, num_processes, std::move(space));
+    ParallelABM::Logger::getInstance().info(
+        "Simulation: Created MPICoordinator");
   } else {
     mpiNode = std::make_unique<MPIWorker>(rank);
+    ParallelABM::Logger::getInstance().info("Simulation: Created MPIWorker");
   }
 }
 

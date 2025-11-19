@@ -3,6 +3,7 @@ find_package(MPI REQUIRED)
 
 # Static library target
 add_library(ParallelABM STATIC
+  src/Logger.cpp
   src/MPINode.cpp
   src/MPIWorker.cpp
   src/MPICoordinator.cpp

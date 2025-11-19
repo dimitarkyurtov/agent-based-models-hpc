@@ -6,10 +6,12 @@
 #include <cstddef>
 #include <memory>
 #include <span>
+#include <string>
 #include <utility>
 #include <vector>
 
 #include "ParallelABM/Agent.h"
+#include "ParallelABM/Logger.h"
 #include "ParallelABM/MPIWorker.h"
 #include "ParallelABM/Space.h"
 
@@ -25,15 +27,24 @@ void MPICoordinator::SendLocalRegionsToWorkers() {
 
     const int kRegionSize = static_cast<int>(kRegion.size());
     MPI_Send(&kRegionSize, 1, MPI_INT, worker_rank, 0, MPI_COMM_WORLD);
+    ParallelABM::Logger::GetInstance().Info(
+        "MPICoordinator: Sent region size (" + std::to_string(kRegionSize) +
+        ") to worker " + std::to_string(worker_rank));
 
     MPI_Send(kRegion.data(), static_cast<int>(kRegionSize * sizeof(Agent)),
              MPI_BYTE, worker_rank, 0, MPI_COMM_WORLD);
+    ParallelABM::Logger::GetInstance().Info(
+        "MPICoordinator: Sent local region (" + std::to_string(kRegionSize) +
+        " agents) to worker " + std::to_string(worker_rank));
   }
 
   const std::span<Agent> kCoordinatorSpan = GetRegionForWorker(0);
   const std::vector<Agent> kCoordinatorRegion(kCoordinatorSpan.begin(),
                                               kCoordinatorSpan.end());
   SetLocalRegion(kCoordinatorRegion);
+  ParallelABM::Logger::GetInstance().Debug(
+      "MPICoordinator: Set own local region (" +
+      std::to_string(kCoordinatorRegion.size()) + " agents)");
 }
 
 void MPICoordinator::ReceiveLocalRegionsFromWorkers() {
@@ -41,15 +52,25 @@ void MPICoordinator::ReceiveLocalRegionsFromWorkers() {
     int region_size = 0;
     MPI_Recv(&region_size, 1, MPI_INT, worker_rank, 0, MPI_COMM_WORLD,
              MPI_STATUS_IGNORE);
+    ParallelABM::Logger::GetInstance().Info(
+        "MPICoordinator: Received region size (" + std::to_string(region_size) +
+        ") from worker " + std::to_string(worker_rank));
 
     const std::span<Agent> kRegion = GetRegionForWorker(worker_rank);
 
     MPI_Recv(kRegion.data(), static_cast<int>(region_size * sizeof(Agent)),
              MPI_BYTE, worker_rank, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+    ParallelABM::Logger::GetInstance().Info(
+        "MPICoordinator: Received local region (" +
+        std::to_string(region_size) + " agents) from worker " +
+        std::to_string(worker_rank));
   }
 
   const std::span<Agent> kCoordinatorRegion = GetRegionForWorker(0);
   std::ranges::copy(localRegion, kCoordinatorRegion.begin());
+  ParallelABM::Logger::GetInstance().Debug(
+      "MPICoordinator: Copied own local region (" +
+      std::to_string(localRegion.size()) + " agents) to space");
 }
 
 void MPICoordinator::SendNeighborsToWorkers() {
@@ -59,15 +80,25 @@ void MPICoordinator::SendNeighborsToWorkers() {
 
     const int kNumNeighbors = static_cast<int>(kNeighborAgents.size());
     MPI_Send(&kNumNeighbors, 1, MPI_INT, worker_rank, 0, MPI_COMM_WORLD);
+    ParallelABM::Logger::GetInstance().Info(
+        "MPICoordinator: Sent neighbor count (" +
+        std::to_string(kNumNeighbors) + ") to worker " +
+        std::to_string(worker_rank));
 
     if (kNumNeighbors > 0) {
       MPI_Send(kNeighborAgents.data(),
                static_cast<int>(kNumNeighbors * sizeof(Agent)), MPI_BYTE,
                worker_rank, 0, MPI_COMM_WORLD);
+      ParallelABM::Logger::GetInstance().Info(
+          "MPICoordinator: Sent neighbors (" + std::to_string(kNumNeighbors) +
+          " agents) to worker " + std::to_string(worker_rank));
     }
   }
 
   neighbors = GetNeighborsForWorker(0);
+  ParallelABM::Logger::GetInstance().Debug(
+      "MPICoordinator: Set own neighbors (" + std::to_string(neighbors.size()) +
+      " agents)");
 }
 
 // Mark: Private Methods
