@@ -16,22 +16,9 @@
  */
 class MPICoordinator : public MPIWorker {
  private:
-  int num_processes_;             // Total number of MPI processes
-  std::unique_ptr<Space> space_;  // Simulation space
-
-  /**
-   * @brief Gets the local region for a specific worker rank.
-   * @param rank The rank of the worker
-   * @return Span of agents representing the region for that worker
-   */
-  std::span<Agent> GetRegionForWorker(int rank);
-
-  /**
-   * @brief Gets the neighbor agents for a specific worker rank.
-   * @param rank The rank of the worker
-   * @return Vector of neighbor agents for that worker's region
-   */
-  std::vector<Agent> GetNeighborsForWorker(int rank);
+  int num_processes_;                   // Total number of MPI processes
+  std::unique_ptr<Space> space_;        // Simulation space
+  std::vector<Space::Region> regions_;  // Cached regions for all processes
 
  public:
   /**
@@ -39,8 +26,10 @@ class MPICoordinator : public MPIWorker {
    * @param rank The MPI rank of this coordinator (typically 0)
    * @param num_processes The total number of MPI processes
    * @param space Unique pointer to the simulation space
+   * @param split_function Function to split region into subregions
    */
-  MPICoordinator(int rank, int num_processes, std::unique_ptr<Space> space);
+  MPICoordinator(int rank, int num_processes, std::unique_ptr<Space> space,
+                 ParallelABM::SplitFunction split_function);
 
   /**
    * @brief Sends local regions to all worker nodes via MPI.
@@ -61,9 +50,8 @@ class MPICoordinator : public MPIWorker {
   /**
    * @brief Sends neighbor agents to all worker nodes via MPI.
    *
-   * Calculates the neighbor agents for each worker's region using the
-   * space's GetNeighborsForRegion method and sends them via MPI.
-   * This is a blocking operation.
+   * Sends pre-computed neighbor agents for each worker's region using the
+   * cached regions' neighbor data. This is a blocking operation.
    */
   void SendNeighborsToWorkers();
 };

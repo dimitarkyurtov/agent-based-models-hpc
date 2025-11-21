@@ -26,7 +26,8 @@ class Simulation {
 
   // Initialize MPI, space, model, and calculate this process's region
   Simulation(int& argc, char**& argv, std::unique_ptr<Space> space,
-             const ModelType& model, ParallelABM::Environment& environment);
+             const ModelType& model, ParallelABM::Environment& environment,
+             ParallelABM::SplitFunction split_function);
 
   // Launch model computation on agent subset with neighbors.
   // Copies the agents back to the local region after execution.
@@ -55,7 +56,8 @@ template <typename ModelType>
 Simulation<ModelType>::Simulation(int& argc, char**& argv,
                                   std::unique_ptr<Space> space,
                                   const ModelType& model,
-                                  ParallelABM::Environment& environment)
+                                  ParallelABM::Environment& environment,
+                                  ParallelABM::SplitFunction split_function)
     : model(std::move(model)), mpiNode(nullptr), environment(environment) {
   MPI_Init(&argc, &argv);
 
@@ -72,12 +74,12 @@ Simulation<ModelType>::Simulation(int& argc, char**& argv,
 
   if (rank == 0) {
     // Move ownership of space to MPICoordinator
-    mpiNode =
-        std::make_unique<MPICoordinator>(rank, num_processes, std::move(space));
+    mpiNode = std::make_unique<MPICoordinator>(
+        rank, num_processes, std::move(space), split_function);
     ParallelABM::Logger::getInstance().info(
         "Simulation: Created MPICoordinator");
   } else {
-    mpiNode = std::make_unique<MPIWorker>(rank);
+    mpiNode = std::make_unique<MPIWorker>(rank, split_function);
     ParallelABM::Logger::getInstance().info("Simulation: Created MPIWorker");
   }
 }

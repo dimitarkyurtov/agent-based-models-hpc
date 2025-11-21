@@ -24,6 +24,96 @@
  * according to their specific spatial structure requirements.
  */
 class Space {
+ public:
+  /**
+   * @class Region
+   * @brief Represents a partition of the space containing a subset of agents.
+   *
+   * A Region defines a contiguous or logical subset of agents within the space
+   * that can be processed independently. Regions are used for distributing
+   * workload across computational nodes in parallel simulations.
+   */
+  class Region {
+   private:
+    /// Indices of agents in the space's agents vector that belong to this
+    /// region
+    std::vector<int> indices_;
+
+    /// Unique identifier for this region
+    int region_id_;
+
+    /// Neighbor agents from other regions that interact with agents in this
+    /// region
+    std::vector<Agent> neighbors_;
+
+   public:
+    /**
+     * @brief Default constructor.
+     */
+    Region() : region_id_(0) {}
+
+    /**
+     * @brief Constructs a region with specified ID, agent indices, and neighbor
+     * agents.
+     * @param region_id The unique identifier for this region
+     * @param agent_indices The indices of agents that belong to this region
+     * @param neighbor_agents Agents from other regions that interact with this
+     * region's agents
+     */
+    Region(int region_id, std::vector<int> agent_indices,
+           std::vector<Agent> neighbor_agents)
+        : indices_(std::move(agent_indices)),
+          region_id_(region_id),
+          neighbors_(std::move(neighbor_agents)) {}
+
+    /**
+     * @brief Copy constructor.
+     */
+    Region(const Region&) = default;
+
+    /**
+     * @brief Move constructor.
+     */
+    Region(Region&&) = default;
+
+    /**
+     * @brief Copy assignment operator.
+     */
+    Region& operator=(const Region&) = default;
+
+    /**
+     * @brief Move assignment operator.
+     */
+    Region& operator=(Region&&) = default;
+
+    /**
+     * @brief Destructor.
+     */
+    ~Region() = default;
+
+    /**
+     * @brief Retrieves the agent indices belonging to this region.
+     * @return Const reference to the vector of agent indices
+     */
+    [[nodiscard]] const std::vector<int>& GetIndices() const {
+      return indices_;
+    }
+
+    /**
+     * @brief Retrieves the unique identifier of this region.
+     * @return The region ID
+     */
+    [[nodiscard]] int GetRegionId() const { return region_id_; }
+
+    /**
+     * @brief Retrieves the neighbor agents from other regions.
+     * @return Const reference to the vector of neighbor agents
+     */
+    [[nodiscard]] const std::vector<Agent>& GetNeighbors() const {
+      return neighbors_;
+    }
+  };
+
  protected:
   /**
    * @brief Collection of all agents in the simulation.
@@ -84,112 +174,48 @@ class Space {
   virtual void Initialize() = 0;
 
   /**
-   * @brief Finds the nearest appropriate index to split the space for workload
-   * distribution.
+   * @brief Partitions the space into multiple regions for distributed
+   * processing.
    *
-   * When distributing the simulation across multiple computational nodes, the
-   * library needs to partition the space into regions. However, an arbitrary
-   * split might not be optimal for the spatial structure. This method allows
-   * the Space implementation to suggest the nearest "natural" split point that
-   * minimizes the number of cross-region neighbor connections.
+   * This method divides the space and its agents into the specified number of
+   * regions, where each region can be processed independently on separate
+   * computational nodes. The implementation should strive to create regions
+   * that minimize cross-region communication while maintaining balanced
+   * workload distribution.
    *
-   * @param index The desired split index in the agents vector where the library
-   * wants to partition the space. This index is treated as a position in the
-   * agents vector where agents[0..index-1] would go to one partition and
-   * agents[index..end] would go to another.
+   * @param num_regions The number of regions to create (typically matches the
+   *                    number of MPI processes)
    *
-   * @param forward If true, search for the nearest proper split forward
-   * (towards higher indices). If false, search backward (towards lower
-   * indices). Default is false.
-   *
-   * @return The nearest index where the space can be appropriately split. This
-   * should be an index that results in minimal cross-region neighbor
-   * relationships while remaining as close as possible to the requested index.
+   * @return A vector of Region objects, where each Region contains:
+   *         - A unique region_id (0 to num_regions-1)
+   *         - A vector of indices referencing agents in the space's agents
+   * vector
    *
    * @details
-   * The implementation should choose a split point that creates "clean"
-   * boundaries in the spatial structure. What constitutes a clean boundary
-   * depends on the space topology:
+   * The goal is to partition the space such that agents within the same region
+   * have high interaction locality (many neighbors within the same region) and
+   * minimal dependencies on agents in other regions. This reduces the amount of
+   * data that must be communicated between MPI processes during simulation.
    *
-   * Example 1 - 2D Grid (10x10, stored row-major):
-   * - Request: split at index 15 (middle of row 1)
-   * - Better options: index 10 (end of row 0) or index 20 (end of row 1)
-   * - This ensures the split occurs at row boundaries, minimizing neighbors
-   * across regions
+   * Implementation considerations:
+   * - For grid-based spaces: partition along natural boundaries (rows, columns,
+   *   layers) to minimize edge-cutting
+   * - For continuous spaces: use spatial decomposition techniques (e.g.,
+   * recursive bisection, k-d trees)
+   * - For networks: apply graph partitioning algorithms to minimize edge cuts
+   * - Balance region sizes to ensure approximately equal workload per process
    *
-   * Example 2 - 3D Grid:
-   * - Prefer splits at layer or plane boundaries to minimize cross-region
-   * communication
+   * Example - 2D Grid (10x10, row-major order, 4 regions):
+   * - Region 0: rows 0-2 (indices 0-29)
+   * - Region 1: rows 3-4 (indices 30-49)
+   * - Region 2: rows 5-7 (indices 50-79)
+   * - Region 3: rows 8-9 (indices 80-99)
    *
-   * Example 3 - Already optimal split:
-   * - If index already represents a natural boundary, simply return the same
-   * index
-   *
-   * The implementation should balance:
-   * 1. Proximity to the requested index (important for load balancing)
-   * 2. Minimizing cross-region neighbor connections (important for
-   * communication efficiency)
-   *
-   * @note This method is called during the initial workload distribution phase
-   * and potentially during dynamic load rebalancing.
+   * @note The sum of all agent indices across all regions should equal the
+   * total number of agents, with each agent appearing in exactly one region.
    */
-  [[nodiscard]] virtual int GetNearestProperSplit(unsigned index,
-                                                  bool forward) const = 0;
-
-  /**
-   * @brief Retrieves the neighbor agents for a specific region that lie outside
-   * that region.
-   *
-   * When a computational node processes a region of the space, it needs to know
-   * about agents that are neighbors to agents within the region but are not
-   * themselves part of the region. These "boundary neighbors" or "ghost agents"
-   * are necessary for correctly computing agent interactions and state updates.
-   *
-   * @param startIndex The starting index (inclusive) of the region in the
-   * agents vector. This marks the beginning of the region being queried.
-   *
-   * @param endIndex The ending index (exclusive) of the region in the agents
-   * vector. The region includes agents[startIndex] through agents[endIndex-1].
-   *                 Following STL container conventions, endIndex is one past
-   * the last element.
-   *
-   * @return A vector of Agent objects (copies) that are neighbors of the
-   * specified region but not part of it. These represent the "halo" or "ghost
-   * zone" around the region. The returned agents satisfy two conditions:
-   *         1. They are neighbors of at least one agent in [startIndex,
-   * endIndex)
-   *         2. They are NOT in the range [startIndex, endIndex)
-   *
-   * @details
-   * The exact definition of "neighbor" depends on the spatial structure and
-   * interaction model:
-   * - 2D Grid with 4-connectivity: agents in cardinal directions (N, S, E, W)
-   * - 2D Grid with 8-connectivity: includes diagonal neighbors
-   * - 3D Grid: up to 26 neighbors (6-face, 18-edge, or 26-vertex connectivity)
-   * - Continuous space: agents within a certain interaction radius
-   * - Network/Graph: nodes connected by edges
-   *
-   * Example - 2D Grid (10x10, row-major order):
-   * - Region: agents[10..20) represents row 1 (indices 10-19)
-   * - Returned neighbors: agents from row 0 (indices 0-9) and row 2 (indices
-   * 20-29) that are adjacent to row 1
-   * - For 4-connectivity: all agents in rows 0 and 2
-   * - For 8-connectivity: would also include diagonal neighbors from adjacent
-   * rows
-   *
-   * This method is critical for:
-   * 1. Computing agent interactions at region boundaries
-   * 2. Determining which agent data must be communicated between MPI nodes
-   * 3. Ensuring consistency in distributed simulation (ghost zone
-   * synchronization)
-   * 4. Maintaining correctness of agent state updates across partition
-   * boundaries
-   *
-   * @note The library will use this information to determine communication
-   * patterns and setup MPI message passing for ghost zone synchronization.
-   */
-  [[nodiscard]] virtual std::vector<Agent> GetNeighborsForRegion(
-      unsigned startIndex, unsigned endIndex) const = 0;
+  [[nodiscard]] virtual std::vector<Region> SplitIntoRegions(
+      int num_regions) const = 0;
 
   /**
    * @brief Provides access to the agents vector for derived classes and the
