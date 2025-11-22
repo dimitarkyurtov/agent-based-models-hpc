@@ -35,8 +35,9 @@ void LocalRegion::SetNeighbors(std::vector<Agent> neighbors) {
   neighbors_ = std::move(neighbors);
 }
 
-std::vector<LocalSubRegion> LocalRegion::SplitIntoSubRegions() const {
-  return split_function_(*this);
+std::vector<LocalSubRegion> LocalRegion::SplitIntoSubRegions(
+    int num_subregions) {
+  return split_function_(*this, num_subregions);
 }
 
 // ============================================================================
@@ -44,7 +45,7 @@ std::vector<LocalSubRegion> LocalRegion::SplitIntoSubRegions() const {
 // ============================================================================
 
 LocalSubRegion::LocalSubRegion(std::vector<int> indices,
-                               const LocalRegion* local_region,
+                               LocalRegion* local_region,
                                std::vector<Agent> neighbors)
     : indices_(std::move(indices)),
       local_region_(local_region),
@@ -57,6 +58,8 @@ const std::vector<int>& LocalSubRegion::GetIndices() const noexcept {
 const LocalRegion* LocalSubRegion::GetLocalRegion() const noexcept {
   return local_region_;
 }
+
+LocalRegion* LocalSubRegion::GetLocalRegion() noexcept { return local_region_; }
 
 const std::vector<Agent>& LocalSubRegion::GetNeighbors() const noexcept {
   return neighbors_;

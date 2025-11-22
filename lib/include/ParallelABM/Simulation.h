@@ -8,9 +8,9 @@
 
 #include "Agent.h"
 #include "Environment.h"
+#include "LocalRegion.h"
 #include "Logger.h"
 #include "MPICoordinator.h"
-#include "MPINode.h"
 #include "MPIWorker.h"
 #include "Model.h"
 #include "Space.h"
@@ -20,19 +20,19 @@
 template <typename ModelType>
 class Simulation {
  public:
-  ModelType model;                        // Agent interaction model
-  std::unique_ptr<MPINode> mpiNode;       // MPI node (coordinator or worker)
-  ParallelABM::Environment& environment;  // Compute resource environment
+  ModelType model;                         // Agent interaction model
+  std::unique_ptr<MPIWorker> mpi_worker_;  // MPI worker node
+  ParallelABM::Environment& environment;   // Compute resource environment
 
   // Initialize MPI, space, model, and calculate this process's region
   Simulation(int& argc, char**& argv, std::unique_ptr<Space> space,
              const ModelType& model, ParallelABM::Environment& environment,
              ParallelABM::SplitFunction split_function);
 
-  // Launch model computation on agent subset with neighbors.
-  // Copies the agents back to the local region after execution.
-  virtual void LaunchModel(std::vector<Agent>& agents,
-                           std::vector<Agent>& neighbors) = 0;
+  // Launch model computation on the local region.
+  // Processes agents using the model's interaction rule.
+  // NOLINTNEXTLINE(portability-template-virtual-member-function)
+  virtual void LaunchModel(ParallelABM::LocalRegion* local_region) = 0;
 
   // Execute simulation for given number of timesteps
   void Start(unsigned int timesteps);
@@ -58,7 +58,7 @@ Simulation<ModelType>::Simulation(int& argc, char**& argv,
                                   const ModelType& model,
                                   ParallelABM::Environment& environment,
                                   ParallelABM::SplitFunction split_function)
-    : model(std::move(model)), mpiNode(nullptr), environment(environment) {
+    : model(std::move(model)), mpi_worker_(nullptr), environment(environment) {
   MPI_Init(&argc, &argv);
 
   int rank = 0;
@@ -67,49 +67,47 @@ Simulation<ModelType>::Simulation(int& argc, char**& argv,
   MPI_Comm_size(MPI_COMM_WORLD, &num_processes);
 
   // Initialize Logger with MPI rank and world size
-  ParallelABM::Logger::getInstance().initialize(rank, num_processes);
-  ParallelABM::Logger::getInstance().info(
+  ParallelABM::Logger::GetInstance().Initialize(rank, num_processes);
+  ParallelABM::Logger::GetInstance().Info(
       "Simulation: Initialized with rank " + std::to_string(rank) + " of " +
       std::to_string(num_processes) + " processes");
 
   if (rank == 0) {
-    // Move ownership of space to MPICoordinator
-    mpiNode = std::make_unique<MPICoordinator>(
+    // Coordinator inherits from MPIWorker
+    mpi_worker_ = std::make_unique<MPICoordinator>(
         rank, num_processes, std::move(space), split_function);
-    ParallelABM::Logger::getInstance().info(
+    ParallelABM::Logger::GetInstance().Info(
         "Simulation: Created MPICoordinator");
   } else {
-    mpiNode = std::make_unique<MPIWorker>(rank, split_function);
-    ParallelABM::Logger::getInstance().info("Simulation: Created MPIWorker");
+    mpi_worker_ = std::make_unique<MPIWorker>(rank, split_function);
+    ParallelABM::Logger::GetInstance().Info("Simulation: Created MPIWorker");
   }
 }
 
 template <typename ModelType>
 void Simulation<ModelType>::Start(unsigned int timesteps) {
-  auto* coordinator = dynamic_cast<MPICoordinator*>(mpiNode.get());
-  auto* worker = dynamic_cast<MPIWorker*>(mpiNode.get());
+  auto* coordinator = dynamic_cast<MPICoordinator*>(mpi_worker_.get());
 
   if (coordinator != nullptr) {
     coordinator->SendLocalRegionsToWorkers();
-  } else if (worker != nullptr) {
-    worker->ReceiveLocalRegion();
+  } else {
+    mpi_worker_->ReceiveLocalRegion();
   }
 
   for (unsigned int step = 0; step < timesteps; ++step) {
     if (coordinator != nullptr) {
       coordinator->SendNeighborsToWorkers();
-    } else if (worker != nullptr) {
-      worker->ReceiveNeighbors();
+    } else {
+      mpi_worker_->ReceiveNeighbors();
     }
 
-    std::vector<Agent>& local_region = worker->GetLocalRegion();
-    std::vector<Agent>& neighbors = worker->GetNeighbors();
-    LaunchModel(local_region, neighbors);
+    ParallelABM::LocalRegion* local_region = mpi_worker_->GetLocalRegion();
+    LaunchModel(local_region);
 
     if (coordinator != nullptr) {
       coordinator->ReceiveLocalRegionsFromWorkers();
-    } else if (worker != nullptr) {
-      worker->SendLocalRegionToLeader();
+    } else {
+      mpi_worker_->SendLocalRegionToLeader();
     }
   }
 }

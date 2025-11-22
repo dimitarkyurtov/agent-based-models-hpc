@@ -1,15 +1,11 @@
 # Find MPI package
 find_package(MPI REQUIRED)
 
+# Collect all source files
+file(GLOB PARALLELABM_SOURCES "${CMAKE_CURRENT_SOURCE_DIR}/src/*.cpp")
+
 # Static library target
-add_library(ParallelABM STATIC
-  src/Logger.cpp
-  src/MPINode.cpp
-  src/MPIWorker.cpp
-  src/MPICoordinator.cpp
-  src/EnvironmentSlurm.cpp
-  src/LocalRegion.cpp
-)
+add_library(ParallelABM STATIC ${PARALLELABM_SOURCES})
 
 # Set C++ standard to C++20 (required for std::span)
 target_compile_features(ParallelABM PUBLIC cxx_std_20)

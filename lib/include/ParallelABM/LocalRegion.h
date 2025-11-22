@@ -14,7 +14,7 @@ class LocalRegion;
 
 // Function type for splitting a region into subregions
 using SplitFunction =
-    std::function<std::vector<LocalSubRegion>(const LocalRegion&)>;
+    std::function<std::vector<LocalSubRegion>(LocalRegion&, int)>;
 
 /**
  * @class LocalRegion
@@ -62,16 +62,15 @@ using SplitFunction =
  *
  * EXAMPLE USAGE:
  * ==============
- * auto splitter = [](const LocalRegion& region) {
+ * auto splitter = [](LocalRegion& region, int num_subregions) {
  *   std::vector<LocalSubRegion> subregions;
- *   const int kThreadCount = 4;
  *   const auto& agents = region.GetAgents();
- *   const int kAgentsPerThread = agents.size() / kThreadCount;
+ *   const int kAgentsPerSubregion = agents.size() / num_subregions;
  *
- *   for (int i = 0; i < kThreadCount; ++i) {
+ *   for (int i = 0; i < num_subregions; ++i) {
  *     std::vector<int> indices;
- *     for (int j = i * kAgentsPerThread;
- *          j < (i + 1) * kAgentsPerThread && j < agents.size(); ++j) {
+ *     for (int j = i * kAgentsPerSubregion;
+ *          j < (i + 1) * kAgentsPerSubregion && j < agents.size(); ++j) {
  *       indices.push_back(j);
  *     }
  *     subregions.emplace_back(indices, &region, region.GetNeighbors());
@@ -127,9 +126,11 @@ class LocalRegion {
    * - Distribute neighbors_ to subregions as needed for calculations
    * - Return a vector of LocalSubRegion instances ready for parallel execution
    *
+   * @param num_subregions Number of subregions to split into
    * @return Vector of LocalSubRegion instances representing the subdivision
    */
-  [[nodiscard]] std::vector<LocalSubRegion> SplitIntoSubRegions() const;
+  [[nodiscard]] std::vector<LocalSubRegion> SplitIntoSubRegions(
+      int num_subregions);
 
   /**
    * @brief Get the region ID
@@ -215,7 +216,7 @@ class LocalSubRegion {
    * @param local_region Non-owning pointer to the parent LocalRegion
    * @param neighbors Neighboring agents relevant to this subregion
    */
-  LocalSubRegion(std::vector<int> indices, const LocalRegion* local_region,
+  LocalSubRegion(std::vector<int> indices, LocalRegion* local_region,
                  std::vector<Agent> neighbors);
 
   /**
@@ -250,10 +251,16 @@ class LocalSubRegion {
   [[nodiscard]] const std::vector<int>& GetIndices() const noexcept;
 
   /**
-   * @brief Get the parent LocalRegion
-   * @return Non-owning pointer to the parent region
+   * @brief Get the parent LocalRegion (const)
+   * @return Non-owning const pointer to the parent region
    */
   [[nodiscard]] const LocalRegion* GetLocalRegion() const noexcept;
+
+  /**
+   * @brief Get the parent LocalRegion (mutable)
+   * @return Non-owning pointer to the parent region
+   */
+  [[nodiscard]] LocalRegion* GetLocalRegion() noexcept;
 
   /**
    * @brief Get the neighboring agents for this subregion
@@ -262,9 +269,9 @@ class LocalSubRegion {
   [[nodiscard]] const std::vector<Agent>& GetNeighbors() const noexcept;
 
  private:
-  std::vector<int> indices_;         ///< Indices into parent's agent vector
-  const LocalRegion* local_region_;  ///< Non-owning pointer to parent region
-  std::vector<Agent> neighbors_;     ///< Neighboring agents for calculations
+  std::vector<int> indices_;      ///< Indices into parent's agent vector
+  LocalRegion* local_region_;     ///< Non-owning pointer to parent region
+  std::vector<Agent> neighbors_;  ///< Neighboring agents for calculations
 };
 
 }  // namespace ParallelABM
