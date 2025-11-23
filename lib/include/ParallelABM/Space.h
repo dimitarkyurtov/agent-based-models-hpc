@@ -37,24 +37,25 @@ class Space {
    private:
     /// Indices of agents in the space's agents vector that belong to this
     /// region
-    std::vector<int> indices_;
+    // NOLINTNEXTLINE(readability-redundant-member-init)
+    std::vector<int> indices_{};
 
     /// Unique identifier for this region
-    int region_id_;
+    int region_id_ = 0;
 
     /// Neighbor agents from other regions that interact with agents in this
     /// region
-    std::vector<Agent> neighbors_;
+    // NOLINTNEXTLINE(readability-redundant-member-init)
+    std::vector<Agent> neighbors_{};
 
    public:
     /**
      * @brief Default constructor.
      */
-    Region() : region_id_(0) {}
+    Region() = default;
 
     /**
-     * @brief Constructs a region with specified ID, agent indices, and neighbor
-     * agents.
+     * @brief Constructs a region with specified ID and agent indices.
      * @param region_id The unique identifier for this region
      * @param agent_indices The indices of agents that belong to this region
      * @param neighbor_agents Agents from other regions that interact with this
@@ -127,7 +128,8 @@ class Space {
    * - For 3D grids: layer-by-layer, row-by-row ordering
    * - For other structures: any ordering that allows efficient neighbor lookups
    */
-  std::vector<Agent> agents;
+  // NOLINTNEXTLINE(readability-redundant-member-init)
+  std::vector<Agent> agents{};
 
  public:
   /**

@@ -4,7 +4,17 @@
       "Bash(xargs clang-tidy -p /Users/dkyurtov/workspace/eductation/hpc/master-thesis/agent-based-models-hpc/build)",
       "Bash(xargs clang-tidy -p build)",
       "Bash(xargs clang-tidy -p build --quiet)",
-      "mcp__context7__get-library-docs"
+      "mcp__context7__get-library-docs",
+      "Bash(xargs clang-tidy:*)",
+      "Bash(clang-tidy:*)",
+      "Bash(for f in lib/src/*.cpp example/*.cpp)",
+      "Bash(do echo \"=== $f ===\")",
+      "Bash(done)",
+      "Bash(xargs:*)",
+      "Bash(echo:*)",
+      "Bash(for f in lib/src/MPIWorker.cpp lib/src/MPICoordinator.cpp lib/src/Logger.cpp lib/src/EnvironmentSlurm.cpp lib/src/LocalRegion.cpp lib/src/SimulationCPU.cpp example/main.cpp)",
+      "Bash(do echo \"=== Checking $f ===\")",
+      "Bash(cmake:*)"
     ],
     "deny": [],
     "ask": []

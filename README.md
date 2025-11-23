@@ -120,9 +120,14 @@ cd build && ctest --output-on-failure
 ### Build Options
 
 - `BUILD_TESTING`: Enable/disable tests (default: ON)
+- `CUDA`: Enable/disable CUDA support for GPU simulations (default: OFF)
 
 ```bash
+# Build without CUDA support
 cmake -B build -DBUILD_TESTING=OFF
+
+# Build with CUDA support
+cmake -B build -DCUDA=ON -DCMAKE_BUILD_TYPE=Release
 ```
 
 ## Running Tests
@@ -149,11 +154,11 @@ The project uses Google C++ style. Format your code before committing:
 # Format a single file
 clang-format -i lib/src/calculator.cpp
 
-# Format all source files
-find lib example tests -name '*.cpp' -o -name '*.h' | xargs clang-format -i
+# Format all source files (C++ and CUDA)
+find lib example tests -type f \( -name '*.cpp' -o -name '*.h' -o -name '*.cu' -o -name '*.cuh' \) | xargs clang-format -i
 
 # Check formatting without modifying files
-find lib example tests -name '*.cpp' -o -name '*.h' | xargs clang-format --dry-run --Werror
+find lib example tests -type f \( -name '*.cpp' -o -name '*.h' -o -name '*.cu' -o -name '*.cuh' \) | xargs clang-format --dry-run --Werror
 ```
 
 ## Static Analysis
@@ -161,14 +166,20 @@ find lib example tests -name '*.cpp' -o -name '*.h' | xargs clang-format --dry-r
 Run clang-tidy for static analysis:
 
 ```bash
-# Configure with compile commands
+# Configure with compile commands (C++ only)
 cmake -B build -DCMAKE_EXPORT_COMPILE_COMMANDS=ON
 
-# Run clang-tidy on library sources
+# Configure with compile commands (C++ and CUDA)
+cmake -B build -DCUDA=ON -DCMAKE_EXPORT_COMPILE_COMMANDS=ON
+
+# Run clang-tidy on C++ library sources
 find lib -name '*.cpp' | xargs clang-tidy -p build
 
-# Run clang-tidy on all sources
+# Run clang-tidy on all C++ sources
 find lib example -name '*.cpp' | xargs clang-tidy -p build
+
+# Run clang-tidy on CUDA sources (requires CUDA=ON during configure)
+find lib example -name '*.cu' | xargs clang-tidy -p build
 ```
 
 ## Git Hooks

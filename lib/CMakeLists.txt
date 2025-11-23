@@ -1,14 +1,34 @@
 # Find MPI package
 find_package(MPI REQUIRED)
 
-# Collect all source files
+# Option to enable CUDA support
+option(CUDA "Enable CUDA support for GPU simulations" OFF)
+
+# Collect source files
 file(GLOB PARALLELABM_SOURCES "${CMAKE_CURRENT_SOURCE_DIR}/src/*.cpp")
+
+# Conditionally add CUDA sources
+if(CUDA)
+  find_package(CUDAToolkit REQUIRED)
+  file(GLOB PARALLELABM_CUDA_SOURCES "${CMAKE_CURRENT_SOURCE_DIR}/src/*.cu")
+  list(APPEND PARALLELABM_SOURCES ${PARALLELABM_CUDA_SOURCES})
+endif()
 
 # Static library target
 add_library(ParallelABM STATIC ${PARALLELABM_SOURCES})
 
 # Set C++ standard to C++20 (required for std::span)
 target_compile_features(ParallelABM PUBLIC cxx_std_20)
+
+# Configure CUDA properties if enabled
+if(CUDA)
+  set_target_properties(ParallelABM PROPERTIES
+    CUDA_SEPARABLE_COMPILATION ON
+    CUDA_STANDARD 17
+    CUDA_STANDARD_REQUIRED ON
+  )
+  target_compile_definitions(ParallelABM PUBLIC PARALLELABM_CUDA_ENABLED)
+endif()
 
 # Include directories
 target_include_directories(ParallelABM
@@ -23,6 +43,10 @@ target_link_libraries(ParallelABM
   PUBLIC
     MPI::MPI_CXX
 )
+
+if(CUDA)
+  target_link_libraries(ParallelABM PUBLIC CUDA::cudart)
+endif()
 
 # Collect all public headers
 file(GLOB PARALLELABM_HEADERS "${CMAKE_CURRENT_SOURCE_DIR}/include/ParallelABM/*.h")

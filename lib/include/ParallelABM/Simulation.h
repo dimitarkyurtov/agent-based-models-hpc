@@ -20,9 +20,9 @@
 template <typename ModelType>
 class Simulation {
  public:
-  ModelType model;                         // Agent interaction model
-  std::unique_ptr<MPIWorker> mpi_worker_;  // MPI worker node
-  ParallelABM::Environment& environment;   // Compute resource environment
+  ModelType model;                                   // Agent interaction model
+  std::unique_ptr<MPIWorker> mpi_worker_ = nullptr;  // MPI worker node
+  ParallelABM::Environment& environment;  // Compute resource environment
 
   // Initialize MPI, space, model, and calculate this process's region
   Simulation(int& argc, char**& argv, std::unique_ptr<Space> space,
@@ -101,7 +101,9 @@ void Simulation<ModelType>::Start(unsigned int timesteps) {
       mpi_worker_->ReceiveNeighbors();
     }
 
-    ParallelABM::LocalRegion* local_region = mpi_worker_->GetLocalRegion();
+    ParallelABM::LocalRegion*
+        local_region =  // NOLINT(cppcoreguidelines-init-variables)
+        mpi_worker_->GetLocalRegion();
     LaunchModel(local_region);
 
     if (coordinator != nullptr) {

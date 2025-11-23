@@ -25,9 +25,9 @@ jobs:
           -v ${{ github.workspace }}:/workspace \
           -w /workspace \
           mpi-nvidia-ubuntu:latest \
-          bash -c "find lib example tests -type f \( -name '*.cpp' -o -name '*.h' -o -name '*.hpp' \) | xargs clang-format --dry-run --Werror"
+          bash -c "find lib example tests -type f \( -name '*.cpp' -o -name '*.h' -o -name '*.hpp' -o -name '*.cu' -o -name '*.cuh' \) | xargs clang-format --dry-run --Werror"
 
-    - name: Run static analysis (clang-tidy)
+    - name: Run static analysis (clang-tidy) on C++ files
       run: |
         docker run --rm \
           -v ${{ github.workspace }}:/workspace \
@@ -35,13 +35,21 @@ jobs:
           mpi-nvidia-ubuntu:latest \
           bash -c "cmake -B build -DCMAKE_EXPORT_COMPILE_COMMANDS=ON && find lib example -type f -name '*.cpp' | xargs clang-tidy -p build --warnings-as-errors='*'"
 
+    - name: Run static analysis (clang-tidy) on CUDA files
+      run: |
+        docker run --rm \
+          -v ${{ github.workspace }}:/workspace \
+          -w /workspace \
+          mpi-nvidia-ubuntu:latest \
+          bash -c "cmake -B build -DCUDA=ON -DCMAKE_EXPORT_COMPILE_COMMANDS=ON && find lib example -type f -name '*.cu' | xargs clang-tidy -p build --warnings-as-errors='*'"
+
     - name: Build application
       run: |
         docker run --rm \
           -v ${{ github.workspace }}:/workspace \
           -w /workspace \
           mpi-nvidia-ubuntu:latest \
-          bash -c "cmake -B build -DCMAKE_BUILD_TYPE=Release -DCMAKE_EXPORT_COMPILE_COMMANDS=ON && cmake --build build"
+          bash -c "cmake -B build -DCMAKE_BUILD_TYPE=Release -DCUDA=ON -DCMAKE_EXPORT_COMPILE_COMMANDS=ON && cmake --build build"
 
     - name: Verify build artifacts
       run: |
