@@ -1,7 +1,6 @@
 #ifndef PARALLELABM_MODELCUDA_H
 #define PARALLELABM_MODELCUDA_H
 
-#include "Agent.h"
 #include "Model.h"
 
 /**
@@ -10,24 +9,23 @@
  * interactions.
  *
  * ModelCUDA provides a GPU-based implementation of the computational model
- * where agent interactions are defined through a CUDA device function pointer.
+ * where agent interactions are defined through a CUDA kernel function pointer.
  * This implementation is designed for execution on NVIDIA GPUs using CUDA.
+ *
+ * @tparam AgentType The user-defined agent type used in the simulation.
+ *                   Must be a POD-like type suitable for GPU memory transfer.
  *
  * ARCHITECTURE:
  * =============
  * This class stores a single member variable - a function pointer to a CUDA
- * device function that defines the interaction rule.
+ * kernel that defines the interaction rule.
  *
- * INTERACTION RULE FUNCTION:
- * ==========================
- * The interaction rule is a user-provided CUDA device function with the
+ * INTERACTION RULE KERNEL:
+ * ========================
+ * The interaction rule is a user-provided CUDA global kernel with the
  * signature:
- *     __device__ void interactionRule(Agent* agents, int size, Agent*
- * neighbors, int neighborSize)
- *
- * Or more commonly, a global kernel:
- *     __global__ void interactionRule(Agent* agents, int size, Agent*
- * neighbors, int neighborSize)
+ *     __global__ void interactionRule(AgentType* agents, int size,
+ *                                      AgentType* neighbors, int neighborSize)
  *
  * Parameters:
  * - agents: Pointer to device memory containing the local agent array
@@ -38,77 +36,41 @@
  * USAGE EXAMPLE:
  * ==============
  *
- * // Define a CUDA kernel for a simple physics simulation
- * __global__ void myPhysicsKernel(Agent* agents, int size, Agent* neighbors,
- * int neighborSize) {
- *     // Calculate global thread index
- *     int idx = blockIdx.x * blockDim.x + threadIdx.x;
+ * struct MyAgent {
+ *     float x, y;
+ *     float vx, vy;
+ * };
  *
- *     // Ensure we don't access beyond the array
+ * __global__ void myPhysicsKernel(MyAgent* agents, int size,
+ *                                  MyAgent* neighbors, int neighborSize) {
+ *     int idx = blockIdx.x * blockDim.x + threadIdx.x;
  *     if (idx >= size) return;
  *
- *     // Cast to specific agent type if needed
- *     MyGPUAgent* agent = &((MyGPUAgent*)agents)[idx];
+ *     MyAgent& agent = agents[idx];
+ *     const float dt = 0.01f;
  *
- *     const float dt = 0.01f;  // Time step
- *     const float damping = 0.99f;
+ *     // Update position based on velocity
+ *     agent.x += agent.vx * dt;
+ *     agent.y += agent.vy * dt;
  *
- *     // Update this agent's position based on velocity
- *     agent->x += agent->vx * dt;
- *     agent->y += agent->vy * dt;
- *
- *     // Apply damping
- *     agent->vx *= damping;
- *     agent->vy *= damping;
- *
- *     // Interact with agents in the local region
- *     for (int j = 0; j < size; ++j) {
- *         if (idx != j) {
- *             MyGPUAgent* other = &((MyGPUAgent*)agents)[j];
- *
- *             // Calculate distance
- *             float dx = other->x - agent->x;
- *             float dy = other->y - agent->y;
- *             float distSq = dx*dx + dy*dy;
- *
- *             // Apply forces based on distance
- *             if (distSq < 1.0f && distSq > 0.0001f) {
- *                 float force = 1.0f / distSq;
- *                 agent->vx -= dx * force;
- *                 agent->vy -= dy * force;
- *             }
- *         }
- *     }
- *
- *     // Interact with neighbor agents from other regions
- *     for (int j = 0; j < neighborSize; ++j) {
- *         MyGPUAgent* neighbor = &((MyGPUAgent*)neighbors)[j];
- *
- *         // Calculate distance to neighbor
- *         float dx = neighbor->x - agent->x;
- *         float dy = neighbor->y - agent->y;
- *         float distSq = dx*dx + dy*dy;
- *
- *         // Apply forces based on distance
- *         if (distSq < 1.0f && distSq > 0.0001f) {
- *             float force = 1.0f / distSq;
- *             agent->vx -= dx * force;
- *             agent->vy -= dy * force;
- *         }
- *     }
+ *     // Interact with other agents...
  * }
+ *
+ * // Create model with typed kernel
+ * ModelCUDA<MyAgent> model(myPhysicsKernel);
  *
  * @see Model Base class defining the interface
  * @see ModelCPU CPU implementation for multi-core processors
  */
+template <typename AgentType>
 class ModelCUDA : public Model {
  public:
   /**
-   * @brief Function pointer type for CUDA interaction rules.
+   * @brief Function pointer type for CUDA interaction rule kernels.
    *
-   * This defines the signature of the interaction rule function for GPU
-   * execution. The function should be a CUDA kernel (__global__) or device
-   * function (__device__) that operates on agents stored in device memory.
+   * This defines the signature of the interaction rule kernel for GPU
+   * execution. The function should be a CUDA __global__ kernel that operates
+   * on agents stored in device memory.
    *
    * Signature:
    * - Parameter 1: Pointer to device memory containing local agent array
@@ -117,21 +79,22 @@ class ModelCUDA : public Model {
    * - Parameter 4: Number of neighbor agents in the array
    * - Return: void (modifies agents in place in device memory)
    *
-   * The function is executed on the GPU with many parallel threads,
+   * The kernel is executed on the GPU with many parallel threads,
    * each processing one or more agents simultaneously.
-   *
    */
-  using InteractionRuleCUDA = void (*)(Agent*, int, Agent*, int);
+  using InteractionRuleCUDA = void (*)(AgentType*, int, AgentType*, int);
 
   /**
-   * @brief The CUDA interaction rule function pointer.
+   * @brief The CUDA interaction rule kernel function pointer.
    */
-  InteractionRuleCUDA interactionRule;
+  InteractionRuleCUDA interaction_rule;
 
   /**
-   * @brief Constructs a ModelCUDA with the specified interaction rule.
+   * @brief Constructs a ModelCUDA with the specified interaction rule kernel.
+   * @param rule Function pointer to the CUDA kernel implementing the
+   * interaction rule
    */
-  explicit ModelCUDA(InteractionRuleCUDA rule) : interactionRule(rule) {}
+  explicit ModelCUDA(InteractionRuleCUDA rule) : interaction_rule(rule) {}
 
   ModelCUDA() = delete;
 

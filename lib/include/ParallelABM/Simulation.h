@@ -32,7 +32,13 @@ class Simulation {
   // Launch model computation on the local region.
   // Processes agents using the model's interaction rule.
   // NOLINTNEXTLINE(portability-template-virtual-member-function)
+  // NOLINTNEXTLINE(clang-diagnostic-unused-parameter)
   virtual void LaunchModel(ParallelABM::LocalRegion* local_region) = 0;
+
+  // Called at the end of each timestep. Override to perform custom actions
+  // such as rendering, logging, or data collection.
+  // NOLINTNEXTLINE(portability-template-virtual-member-function)
+  virtual void OnTimeStepCompleted(unsigned int timestep) {}
 
   // Execute simulation for given number of timesteps
   void Start(unsigned int timesteps);
@@ -111,6 +117,8 @@ void Simulation<ModelType>::Start(unsigned int timesteps) {
     } else {
       mpi_worker_->SendLocalRegionToLeader();
     }
+
+    OnTimeStepCompleted(step);
   }
 }
 
