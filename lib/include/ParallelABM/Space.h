@@ -3,26 +3,40 @@
 
 #include <vector>
 
-#include "ParallelABM/Agent.h"
+namespace ParallelABM {
+template <typename AgentT>
+class LocalRegion;
+template <typename AgentT>
+class LocalSubRegion;
+}  // namespace ParallelABM
 
 /**
  * @class Space
- * @brief Abstract interface defining the spatial organization of agents in the
+ * @brief Template class defining the spatial organization of agents in the
  * simulation.
  *
+ * @tparam AgentT The concrete agent type stored in this space. Must be:
+ *   - Default constructible (for MPI receive operations)
+ *   - Copy constructible and copy assignable (for MPI send/receive)
+ *   - Preferably trivially copyable for optimal MPI performance
+ *
  * The Space class represents the spatial structure where agents reside and
- * defines how they are organized positionally with respect to one another. This
- * is an abstract interface that users must implement based on their specific
- * spatial requirements (e.g., 2D grid, 3D grid, continuous space, network
- * topology, etc.).
+ * defines how they are organized positionally with respect to one another.
+ * Users should inherit from this class and implement the pure virtual methods
+ * according to their specific spatial requirements (e.g., 2D grid, 3D grid,
+ * continuous space, network topology, etc.).
  *
  * The library uses this interface to efficiently distribute the simulation
  * workload across multiple computational nodes via MPI while minimizing
  * communication overhead between regions.
  *
- * Users should inherit from this class and implement the pure virtual methods
- * according to their specific spatial structure requirements.
+ * Template Benefits:
+ * - Direct value storage eliminates pointer indirection overhead
+ * - Enables zero-copy MPI communication (send/recv contiguous arrays)
+ * - Compile-time type safety prevents object slicing
+ * - Better cache locality from contiguous memory layout
  */
+template <typename AgentT>
 class Space {
  public:
   /**
@@ -37,16 +51,14 @@ class Space {
    private:
     /// Indices of agents in the space's agents vector that belong to this
     /// region
-    // NOLINTNEXTLINE(readability-redundant-member-init)
-    std::vector<int> indices_{};
+    std::vector<int> indices_;
 
     /// Unique identifier for this region
     int region_id_ = 0;
 
     /// Neighbor agents from other regions that interact with agents in this
-    /// region
-    // NOLINTNEXTLINE(readability-redundant-member-init)
-    std::vector<Agent> neighbors_{};
+    /// region (stored by value for efficient MPI communication)
+    std::vector<AgentT> neighbors_;
 
    public:
     /**
@@ -62,7 +74,7 @@ class Space {
      * region's agents
      */
     Region(int region_id, std::vector<int> agent_indices,
-           std::vector<Agent> neighbor_agents)
+           std::vector<AgentT> neighbor_agents)
         : indices_(std::move(agent_indices)),
           region_id_(region_id),
           neighbors_(std::move(neighbor_agents)) {}
@@ -75,7 +87,7 @@ class Space {
     /**
      * @brief Move constructor.
      */
-    Region(Region&&) = default;
+    Region(Region&&) noexcept = default;
 
     /**
      * @brief Copy assignment operator.
@@ -85,7 +97,7 @@ class Space {
     /**
      * @brief Move assignment operator.
      */
-    Region& operator=(Region&&) = default;
+    Region& operator=(Region&&) noexcept = default;
 
     /**
      * @brief Destructor.
@@ -110,7 +122,7 @@ class Space {
      * @brief Retrieves the neighbor agents from other regions.
      * @return Const reference to the vector of neighbor agents
      */
-    [[nodiscard]] const std::vector<Agent>& GetNeighbors() const {
+    [[nodiscard]] const std::vector<AgentT>& GetNeighbors() const {
       return neighbors_;
     }
   };
@@ -119,17 +131,21 @@ class Space {
   /**
    * @brief Collection of all agents in the simulation.
    *
-   * This vector contains all agents that exist within this spatial structure.
+   * This vector contains agents stored by value in contiguous memory.
    * The ordering of agents in this vector is significant, as it determines how
    * the space can be partitioned for distributed computation.
+   *
+   * Benefits of value storage:
+   * - Zero pointer indirection - better cache performance
+   * - Contiguous memory layout - optimal for vectorization
+   * - Direct MPI communication - no serialization overhead
    *
    * The specific ordering strategy depends on the spatial implementation:
    * - For 2D grids: typically row-major or column-major order
    * - For 3D grids: layer-by-layer, row-by-row ordering
    * - For other structures: any ordering that allows efficient neighbor lookups
    */
-  // NOLINTNEXTLINE(readability-redundant-member-init)
-  std::vector<Agent> agents{};
+  std::vector<AgentT> agents{};
 
  public:
   /**
@@ -150,12 +166,12 @@ class Space {
   /**
    * @brief Move constructor.
    */
-  Space(Space&&) = default;
+  Space(Space&&) noexcept = default;
 
   /**
    * @brief Move assignment operator.
    */
-  Space& operator=(Space&&) = default;
+  Space& operator=(Space&&) noexcept = default;
 
   /**
    * @brief Virtual destructor for proper cleanup of derived classes.
@@ -192,6 +208,7 @@ class Space {
    *         - A unique region_id (0 to num_regions-1)
    *         - A vector of indices referencing agents in the space's agents
    * vector
+   *         - Copies of neighbor agents for interaction calculations
    *
    * @details
    * The goal is to partition the space such that agents within the same region
@@ -220,12 +237,26 @@ class Space {
       int num_regions) const = 0;
 
   /**
+   * @brief Subdivide a local region for parallel processing.
+   *
+   * Splits a LocalRegion into subregions for fine-grained parallelism
+   * (e.g., CPU threads, GPU devices). The splitting strategy should
+   * distribute agents efficiently based on the spatial structure.
+   *
+   * @param region The local region to subdivide
+   * @param num_subregions Number of subregions to create
+   * @return Vector of LocalSubRegion objects for parallel processing
+   */
+  virtual std::vector<ParallelABM::LocalSubRegion<AgentT>> SplitLocalRegion(
+      ParallelABM::LocalRegion<AgentT>& region, int num_subregions) const = 0;
+
+  /**
    * @brief Provides access to the agents vector for derived classes and the
    * library.
    *
    * @return Reference to the vector containing all agents in the simulation.
    */
-  std::vector<Agent>& GetAgents() { return agents; }
+  std::vector<AgentT>& GetAgents() { return agents; }
 
   /**
    * @brief Provides const access to the agents vector.
@@ -233,7 +264,7 @@ class Space {
    * @return Const reference to the vector containing all agents in the
    * simulation.
    */
-  [[nodiscard]] const std::vector<Agent>& GetAgents() const { return agents; }
+  [[nodiscard]] const std::vector<AgentT>& GetAgents() const { return agents; }
 };
 
 #endif  // PARALLELABM_SPACE_H

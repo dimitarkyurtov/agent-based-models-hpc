@@ -9,7 +9,7 @@ You are an expert static code analysis specialist with deep knowledge of code qu
 
 Your primary responsibilities:
 
-1. **Run the static analyzer**: Use this command to run the static analysis `find lib example -name '*.cpp' | xargs clang-tidy -p build` and `find lib example -name '*.cu' | xargs clang-tidy -p build`
+1. **Run the static analyzer**: Use this command to run the static analysis `find lib example \( -name '*.cpp' \) ! -path '*/external/*' ! -path '*/imgui*' | xargs clang-tidy -p build`
 
 2. **Understand the rules defined in .clang-tidy file**: Use the rules defined in @.clang-tidy file in the root of the repo in order to apply fixes to configured rules there like variable naming conventions and similar.
 

@@ -1,4 +1,5 @@
-#include "ParallelABM/MPIWorker.h"
+#ifndef PARALLELABM_MPIWORKER_INL
+#define PARALLELABM_MPIWORKER_INL
 
 #include <mpi.h>
 
@@ -7,38 +8,45 @@
 #include <utility>
 #include <vector>
 
-#include "ParallelABM/Agent.h"
 #include "ParallelABM/LocalRegion.h"
 #include "ParallelABM/Logger.h"
 #include "ParallelABM/MPINode.h"
 
-MPIWorker::MPIWorker(int rank, ParallelABM::SplitFunction split_function)
-    : MPINode(rank),
-      local_region_(nullptr),
-      split_function_(std::move(split_function)) {}
+template <typename AgentT>
+MPIWorker<AgentT>::MPIWorker(int rank)
+    : MPINode(rank), local_region_(nullptr) {}
 
-MPIWorker::MPIWorker(int rank, std::unique_ptr<ParallelABM::LocalRegion> region)
+template <typename AgentT>
+MPIWorker<AgentT>::MPIWorker(
+    int rank, std::unique_ptr<ParallelABM::LocalRegion<AgentT>> region)
     : MPINode(rank), local_region_(std::move(region)) {}
 
-ParallelABM::LocalRegion* MPIWorker::GetLocalRegion() noexcept {
+template <typename AgentT>
+ParallelABM::LocalRegion<AgentT>* MPIWorker<AgentT>::GetLocalRegion()
+    noexcept {
   return local_region_.get();
 }
 
-const ParallelABM::LocalRegion* MPIWorker::GetLocalRegion() const noexcept {
+template <typename AgentT>
+const ParallelABM::LocalRegion<AgentT>* MPIWorker<AgentT>::GetLocalRegion()
+    const noexcept {
   return local_region_.get();
 }
 
-std::unique_ptr<ParallelABM::LocalRegion>&
-MPIWorker::GetLocalRegionPtr() noexcept {
+template <typename AgentT>
+std::unique_ptr<ParallelABM::LocalRegion<AgentT>>&
+MPIWorker<AgentT>::GetLocalRegionPtr() noexcept {
   return local_region_;
 }
 
-void MPIWorker::SetLocalRegion(
-    std::unique_ptr<ParallelABM::LocalRegion> region) {
+template <typename AgentT>
+void MPIWorker<AgentT>::SetLocalRegion(
+    std::unique_ptr<ParallelABM::LocalRegion<AgentT>> region) {
   local_region_ = std::move(region);
 }
 
-void MPIWorker::ReceiveLocalRegion() {
+template <typename AgentT>
+void MPIWorker<AgentT>::ReceiveLocalRegion() {
   // Receive region ID
   int region_id = 0;
   MPI_Recv(&region_id, 1, MPI_INT, 0, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
@@ -53,11 +61,15 @@ void MPIWorker::ReceiveLocalRegion() {
                                           std::to_string(region_size) +
                                           ") from coordinator");
 
-  // Receive agents
-  std::vector<Agent> agents(region_size);
+  // Receive agents directly as contiguous array
+  std::vector<AgentT> agents;
+  agents.reserve(static_cast<size_t>(region_size));
+
   if (region_size > 0) {
-    MPI_Recv(agents.data(), static_cast<int>(region_size * sizeof(Agent)),
+    agents.resize(region_size);
+    MPI_Recv(agents.data(), static_cast<int>(region_size * sizeof(AgentT)),
              MPI_BYTE, 0, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+
     ParallelABM::Logger::GetInstance().Info(
         "MPIWorker: Received local region (" + std::to_string(region_size) +
         " agents) from coordinator");
@@ -65,18 +77,19 @@ void MPIWorker::ReceiveLocalRegion() {
 
   // Create LocalRegion with empty neighbors (will be set later via
   // ReceiveNeighbors)
-  local_region_ = std::make_unique<ParallelABM::LocalRegion>(
-      region_id, std::move(agents), std::vector<Agent>{}, split_function_);
+  local_region_ = std::make_unique<ParallelABM::LocalRegion<AgentT>>(
+      region_id, std::move(agents), std::vector<AgentT>{});
 }
 
-void MPIWorker::SendLocalRegionToLeader() {
+template <typename AgentT>
+void MPIWorker<AgentT>::SendLocalRegionToLeader() {
   if (!local_region_) {
     ParallelABM::Logger::GetInstance().Warning(
         "MPIWorker: Attempted to send null local region to coordinator");
     return;
   }
 
-  const std::vector<Agent>& agents = local_region_->GetAgents();
+  const std::vector<AgentT>& agents = local_region_->GetAgents();
   const int kRegionSize = static_cast<int>(agents.size());
 
   MPI_Send(&kRegionSize, 1, MPI_INT, 0, 0, MPI_COMM_WORLD);
@@ -85,7 +98,8 @@ void MPIWorker::SendLocalRegionToLeader() {
                                           ") to coordinator");
 
   if (kRegionSize > 0) {
-    MPI_Send(agents.data(), static_cast<int>(kRegionSize * sizeof(Agent)),
+    // Send agents directly as contiguous array (zero-copy)
+    MPI_Send(agents.data(), static_cast<int>(kRegionSize * sizeof(AgentT)),
              MPI_BYTE, 0, 0, MPI_COMM_WORLD);
     ParallelABM::Logger::GetInstance().Info("MPIWorker: Sent local region (" +
                                             std::to_string(kRegionSize) +
@@ -93,7 +107,8 @@ void MPIWorker::SendLocalRegionToLeader() {
   }
 }
 
-void MPIWorker::ReceiveNeighbors() {
+template <typename AgentT>
+void MPIWorker<AgentT>::ReceiveNeighbors() {
   // Receive neighbor count
   int num_neighbors = 0;
   MPI_Recv(&num_neighbors, 1, MPI_INT, 0, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
@@ -101,11 +116,15 @@ void MPIWorker::ReceiveNeighbors() {
       "MPIWorker: Received neighbor count (" + std::to_string(num_neighbors) +
       ") from coordinator");
 
-  // Receive neighbors
-  std::vector<Agent> neighbors(num_neighbors);
+  // Receive neighbors as contiguous array
+  std::vector<AgentT> neighbors;
+  neighbors.reserve(static_cast<size_t>(num_neighbors));
+
   if (num_neighbors > 0) {
-    MPI_Recv(neighbors.data(), static_cast<int>(num_neighbors * sizeof(Agent)),
+    neighbors.resize(num_neighbors);
+    MPI_Recv(neighbors.data(), static_cast<int>(num_neighbors * sizeof(AgentT)),
              MPI_BYTE, 0, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+
     ParallelABM::Logger::GetInstance().Info("MPIWorker: Received neighbors (" +
                                             std::to_string(num_neighbors) +
                                             " agents) from coordinator");
@@ -119,3 +138,5 @@ void MPIWorker::ReceiveNeighbors() {
         "MPIWorker: Received neighbors but local region is null");
   }
 }
+
+#endif  // PARALLELABM_MPIWORKER_INL

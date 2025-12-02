@@ -1,0 +1,49 @@
+{
+    "version": "2.0.0",
+    "tasks": [
+        {
+            "label": "build",
+            "type": "shell",
+            "command": "cmake",
+            "args": [
+                "--build",
+                "${workspaceFolder}/build",
+                "--target",
+                "game_of_life_cpu_ui",
+                "-j4"
+            ],
+            "group": {
+                "kind": "build",
+                "isDefault": true
+            },
+            "problemMatcher": ["$gcc"],
+            "detail": "Build the game_of_life_cpu_ui target"
+        },
+        {
+            "label": "configure",
+            "type": "shell",
+            "command": "cmake",
+            "args": [
+                "-S",
+                "${workspaceFolder}",
+                "-B",
+                "${workspaceFolder}/build"
+            ],
+            "group": "build",
+            "problemMatcher": [],
+            "detail": "Configure CMake project"
+        },
+        {
+            "label": "clean",
+            "type": "shell",
+            "command": "rm",
+            "args": [
+                "-rf",
+                "${workspaceFolder}/build"
+            ],
+            "group": "build",
+            "problemMatcher": [],
+            "detail": "Clean build directory"
+        }
+    ]
+}

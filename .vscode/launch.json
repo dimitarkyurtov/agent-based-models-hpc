@@ -1,0 +1,30 @@
+{
+    // Use IntelliSense to learn about possible attributes.
+    // Hover to view descriptions of existing attributes.
+    // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "type": "cppdbg",
+            "request": "launch",
+            "name": "Debug Game of Life CPU UI",
+            "program": "${workspaceFolder}/build/bin/game_of_life_cpu_ui",
+            "args": [],
+            "cwd": "${workspaceFolder}",
+            "preLaunchTask": "build",
+            "stopAtEntry": false,
+            "environment": [],
+            "externalConsole": false,
+            "MIMode": "lldb",
+            "osx": {
+                "MIMode": "lldb"
+            }
+        },
+        {
+            "type": "node",
+            "request": "attach",
+            "name": "Containers: Attach to Node",
+            "remoteRoot": "/usr/src/app"
+        }
+    ]
+}

@@ -28,6 +28,9 @@ endif()
 # Option to enable/disable testing
 option(BUILD_TESTING "Build tests" ON)
 
+# Add external dependencies
+add_subdirectory(external/imgui-cmake)
+
 # Add subdirectories
 add_subdirectory(lib)
 add_subdirectory(example)

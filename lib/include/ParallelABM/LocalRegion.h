@@ -4,22 +4,20 @@
 #include <functional>
 #include <vector>
 
-#include "ParallelABM/Agent.h"
-
 namespace ParallelABM {
 
 // Forward declaration for the nested class
+template <typename AgentT>
 class LocalSubRegion;
+template <typename AgentT>
 class LocalRegion;
-
-// Function type for splitting a region into subregions
-using SplitFunction =
-    std::function<std::vector<LocalSubRegion>(LocalRegion&, int)>;
 
 /**
  * @class LocalRegion
- * @brief Represents a local region for parallel agent-based modeling with
- * configurable splitting strategy.
+ * @brief Template class representing a local region for parallel agent-based
+ * modeling.
+ *
+ * @tparam AgentT The concrete agent type stored in this region
  *
  * LocalRegion encapsulates a subdivision of the global simulation space
  * assigned to a computational node. It contains:
@@ -27,25 +25,13 @@ using SplitFunction =
  * - Neighboring agents from adjacent regions (read-only for interaction
  * calculations)
  * - A region identifier assigned by the coordinator
- * - A splitting function for subdividing the region into subregions
  *
  * PURPOSE:
  * ========
  * The LocalRegion serves as the fundamental unit of work distribution in the
  * parallel simulation:
  * 1. Receives agent data from the MPI coordinator
- * 2. Provides an interface for further local subdivisions (CPU threads, GPU
- * devices)
- * 3. Enables users to provide custom workload splitting strategies via function
- *
- * USER EXTENSIBILITY:
- * ===================
- * Users provide a SplitFunction during construction to define how the region's
- * workload should be subdivided for local parallel processing. This enables
- * flexible strategies such as:
- * - Splitting by agent count for CPU thread pools
- * - Spatial partitioning for GPU device distribution
- * - Hybrid approaches combining different criteria
+ * 2. Stores agents and their neighbors for local processing
  *
  * AGENT OWNERSHIP:
  * ================
@@ -57,28 +43,18 @@ using SplitFunction =
  * =========================
  * This class itself is not thread-safe. Synchronization must be handled by:
  * - The caller when accessing shared LocalRegion instances
- * - The provided splitting function when called in parallel contexts
  * - The LocalSubRegion instances during parallel execution
  *
- * EXAMPLE USAGE:
- * ==============
- * auto splitter = [](LocalRegion& region, int num_subregions) {
- *   std::vector<LocalSubRegion> subregions;
- *   const auto& agents = region.GetAgents();
- *   const int kAgentsPerSubregion = agents.size() / num_subregions;
+ * NOTE: LocalRegion does NOT perform splitting. All splitting logic is
+ * delegated to the Space class via Space::SplitLocalRegion().
  *
- *   for (int i = 0; i < num_subregions; ++i) {
- *     std::vector<int> indices;
- *     for (int j = i * kAgentsPerSubregion;
- *          j < (i + 1) * kAgentsPerSubregion && j < agents.size(); ++j) {
- *       indices.push_back(j);
- *     }
- *     subregions.emplace_back(indices, &region, region.GetNeighbors());
- *   }
- *   return subregions;
- * };
- * LocalRegion region(0, std::move(agents), std::move(neighbors), splitter);
+ * TEMPLATE BENEFITS:
+ * ==================
+ * - Direct value storage for agents (no pointer indirection)
+ * - Efficient MPI communication (send/recv contiguous arrays)
+ * - Type safety prevents object slicing
  */
+template <typename AgentT>
 class LocalRegion {
  public:
   /**
@@ -86,10 +62,9 @@ class LocalRegion {
    * @param region_id Unique identifier for this region assigned by coordinator
    * @param agents Vector of agents this region is responsible for
    * @param neighbors Vector of neighboring agents from adjacent regions
-   * @param split_function Function to split region into subregions
    */
-  LocalRegion(int region_id, std::vector<Agent> agents,
-              std::vector<Agent> neighbors, SplitFunction split_function);
+  LocalRegion(int region_id, std::vector<AgentT> agents,
+              std::vector<AgentT> neighbors);
 
   /**
    * @brief Default copy constructor
@@ -104,33 +79,17 @@ class LocalRegion {
   /**
    * @brief Default move constructor
    */
-  LocalRegion(LocalRegion&&) = default;
+  LocalRegion(LocalRegion&&) noexcept = default;
 
   /**
    * @brief Default move assignment operator
    */
-  LocalRegion& operator=(LocalRegion&&) = default;
+  LocalRegion& operator=(LocalRegion&&) noexcept = default;
 
   /**
    * @brief Default destructor
    */
   ~LocalRegion() = default;
-
-  /**
-   * @brief Split this region into subregions for local parallel processing
-   *
-   * This method invokes the user-provided splitting function to define
-   * the workload splitting strategy. The function should:
-   * - Analyze the agents_ vector to determine optimal subdivision
-   * - Create LocalSubRegion instances with appropriate index ranges
-   * - Distribute neighbors_ to subregions as needed for calculations
-   * - Return a vector of LocalSubRegion instances ready for parallel execution
-   *
-   * @param num_subregions Number of subregions to split into
-   * @return Vector of LocalSubRegion instances representing the subdivision
-   */
-  [[nodiscard]] std::vector<LocalSubRegion> SplitIntoSubRegions(
-      int num_subregions);
 
   /**
    * @brief Get the region ID
@@ -142,44 +101,45 @@ class LocalRegion {
    * @brief Get the agents vector
    * @return Const reference to the agents this region processes
    */
-  [[nodiscard]] const std::vector<Agent>& GetAgents() const noexcept;
+  [[nodiscard]] const std::vector<AgentT>& GetAgents() const noexcept;
 
   /**
    * @brief Get mutable access to the agents vector
    * @return Mutable reference to the agents this region processes
    */
-  [[nodiscard]] std::vector<Agent>& GetAgents() noexcept;
+  [[nodiscard]] std::vector<AgentT>& GetAgents() noexcept;
 
   /**
    * @brief Get the neighboring agents vector
    * @return Const reference to the neighboring agents (read-only)
    */
-  [[nodiscard]] const std::vector<Agent>& GetNeighbors() const noexcept;
+  [[nodiscard]] const std::vector<AgentT>& GetNeighbors() const noexcept;
 
   /**
    * @brief Update the neighboring agents vector
    * @param neighbors New vector of neighboring agents from adjacent regions
    */
-  void SetNeighbors(std::vector<Agent> neighbors);
+  void SetNeighbors(std::vector<AgentT> neighbors);
 
  protected:
-  int region_id_;                 ///< Region identifier from coordinator
-  std::vector<Agent> agents_;     ///< Agents to process and update
-  std::vector<Agent> neighbors_;  ///< Neighboring agents (read-only)
-  SplitFunction split_function_;  ///< Function to split region into subregions
+  int region_id_;                  ///< Region identifier from coordinator
+  std::vector<AgentT> agents_;     ///< Agents to process and update
+  std::vector<AgentT> neighbors_;  ///< Neighboring agents (read-only)
 };
 
 /**
  * @class LocalSubRegion
- * @brief Represents a subdivision of a LocalRegion for fine-grained parallel
- * processing.
+ * @brief Template class representing a subdivision of a LocalRegion for
+ * fine-grained parallel processing.
  *
- * LocalSubRegion is created by LocalRegion::SplitIntoSubRegions() to enable
- * parallel execution at the local level (e.g., CPU threads, GPU devices).
- * Each subregion:
+ * @tparam AgentT The concrete agent type stored in this subregion
+ *
+ * LocalSubRegion is created by Space::SplitLocalRegion() to enable parallel
+ * execution at the local level (e.g., CPU threads, GPU devices). Each
+ * subregion:
  * - Contains indices into the parent LocalRegion's agent vector
  * - Maintains a reference to the parent for accessing agent data
- * - Has its own copy of relevant neighbors for interaction calculations
+ * - Has its own references to relevant neighbors for interaction calculations
  *
  * PURPOSE:
  * ========
@@ -192,8 +152,7 @@ class LocalRegion {
  * ==================
  * - indices_: Owned by this instance, defines which agents to process
  * - local_region_: Non-owning pointer to parent (must outlive this instance)
- * - neighbors_: Owned copy of neighbors needed for this subregion's
- * calculations
+ * - neighbors_: References to neighboring agents for calculations
  *
  * LIFETIME CONSIDERATIONS:
  * ========================
@@ -208,16 +167,18 @@ class LocalRegion {
  * - The parent LocalRegion remains unmodified during parallel execution
  * - Synchronization is applied when merging results back to the parent
  */
+template <typename AgentT>
 class LocalSubRegion {
  public:
   /**
    * @brief Construct a LocalSubRegion with specified parameters
    * @param indices Agent indices within the parent region to process
    * @param local_region Non-owning pointer to the parent LocalRegion
-   * @param neighbors Neighboring agents relevant to this subregion
+   * @param neighbors References to neighboring agents relevant to this
+   * subregion
    */
-  LocalSubRegion(std::vector<int> indices, LocalRegion* local_region,
-                 std::vector<Agent> neighbors);
+  LocalSubRegion(std::vector<int> indices, LocalRegion<AgentT>* local_region,
+                 const std::vector<AgentT>& neighbors);
 
   /**
    * @brief Default copy constructor
@@ -254,26 +215,31 @@ class LocalSubRegion {
    * @brief Get the parent LocalRegion (const)
    * @return Non-owning const pointer to the parent region
    */
-  [[nodiscard]] const LocalRegion* GetLocalRegion() const noexcept;
+  [[nodiscard]] const LocalRegion<AgentT>* GetLocalRegion() const noexcept;
 
   /**
    * @brief Get the parent LocalRegion (mutable)
    * @return Non-owning pointer to the parent region
    */
-  [[nodiscard]] LocalRegion* GetLocalRegion() noexcept;
+  [[nodiscard]] LocalRegion<AgentT>* GetLocalRegion() noexcept;
 
   /**
    * @brief Get the neighboring agents for this subregion
-   * @return Const reference to the neighbors vector
+   * @return Const reference to the neighbor references vector
    */
-  [[nodiscard]] const std::vector<Agent>& GetNeighbors() const noexcept;
+  [[nodiscard]] const std::vector<std::reference_wrapper<const AgentT>>&
+  GetNeighbors() const noexcept;
 
  private:
-  std::vector<int> indices_;      ///< Indices into parent's agent vector
-  LocalRegion* local_region_;     ///< Non-owning pointer to parent region
-  std::vector<Agent> neighbors_;  ///< Neighboring agents for calculations
+  std::vector<int> indices_;           ///< Indices into parent's agent vector
+  LocalRegion<AgentT>* local_region_;  ///< Non-owning pointer to parent region
+  std::vector<std::reference_wrapper<const AgentT>>
+      neighbors_;  ///< References to neighboring agents for calculations
 };
 
 }  // namespace ParallelABM
+
+// Include implementation
+#include "LocalRegion.inl"
 
 #endif  // PARALLELABM_LOCALREGION_H

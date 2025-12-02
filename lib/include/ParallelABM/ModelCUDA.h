@@ -9,21 +9,23 @@
  * interactions.
  *
  * ModelCUDA provides a GPU-based implementation of the computational model
- * where agent interactions are defined through a CUDA kernel function pointer.
- * This implementation is designed for execution on NVIDIA GPUs using CUDA.
+ * where agent interactions are defined through a virtual method that returns
+ * a CUDA kernel function pointer. This implementation is designed for execution
+ * on NVIDIA GPUs using CUDA.
  *
  * @tparam AgentType The user-defined agent type used in the simulation.
  *                   Must be a POD-like type suitable for GPU memory transfer.
  *
  * ARCHITECTURE:
  * =============
- * This class stores a single member variable - a function pointer to a CUDA
- * kernel that defines the interaction rule.
+ * This is an abstract base class that defines the interface for CUDA-based
+ * models. Derived classes must implement the GetInteractionKernel virtual
+ * method to return their specific CUDA kernel function pointer.
  *
  * INTERACTION RULE KERNEL:
  * ========================
- * The interaction rule is a user-provided CUDA global kernel with the
- * signature:
+ * Derived classes must override GetInteractionKernel to return a CUDA kernel
+ * function pointer with the signature:
  *     __global__ void interactionRule(AgentType* agents, int size,
  *                                      AgentType* neighbors, int neighborSize)
  *
@@ -48,16 +50,18 @@
  *
  *     MyAgent& agent = agents[idx];
  *     const float dt = 0.01f;
- *
- *     // Update position based on velocity
  *     agent.x += agent.vx * dt;
  *     agent.y += agent.vy * dt;
- *
- *     // Interact with other agents...
  * }
  *
- * // Create model with typed kernel
- * ModelCUDA<MyAgent> model(myPhysicsKernel);
+ * class MyPhysicsModelCUDA : public ModelCUDA<MyAgent> {
+ *  public:
+ *   MyPhysicsModelCUDA() = default;
+ *
+ *   InteractionRuleCUDA GetInteractionKernel() const override {
+ *     return myPhysicsKernel;
+ *   }
+ * };
  *
  * @see Model Base class defining the interface
  * @see ModelCPU CPU implementation for multi-core processors
@@ -85,18 +89,9 @@ class ModelCUDA : public Model {
   using InteractionRuleCUDA = void (*)(AgentType*, int, AgentType*, int);
 
   /**
-   * @brief The CUDA interaction rule kernel function pointer.
+   * @brief Default constructor.
    */
-  InteractionRuleCUDA interaction_rule;
-
-  /**
-   * @brief Constructs a ModelCUDA with the specified interaction rule kernel.
-   * @param rule Function pointer to the CUDA kernel implementing the
-   * interaction rule
-   */
-  explicit ModelCUDA(InteractionRuleCUDA rule) : interaction_rule(rule) {}
-
-  ModelCUDA() = delete;
+  ModelCUDA() = default;
 
   /**
    * @brief Copy constructor.
@@ -122,6 +117,17 @@ class ModelCUDA : public Model {
    * @brief Virtual destructor for proper cleanup.
    */
   ~ModelCUDA() override = default;
+
+  /**
+   * @brief Get the CUDA kernel function pointer for agent interactions.
+   *
+   * This pure virtual method must be implemented by derived classes to return
+   * the CUDA kernel that implements the interaction logic. Called by
+   * SimulationCUDA when launching the kernel for each GPU subregion.
+   *
+   * @return Function pointer to the CUDA __global__ kernel
+   */
+  virtual InteractionRuleCUDA GetInteractionKernel() const = 0;
 };
 
 #endif  // PARALLELABM_MODELCUDA_H

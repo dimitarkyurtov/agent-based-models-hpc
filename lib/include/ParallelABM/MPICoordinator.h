@@ -9,27 +9,33 @@
 
 /**
  * @class MPICoordinator
- * @brief Represents the coordinator (leader) node in the MPI network.
+ * @brief Template-based coordinator (leader) node in the MPI network.
+ *
+ * @tparam AgentT The concrete agent type for this coordinator. Must be:
+ *   - Default constructible (for MPI receive operations)
+ *   - Copy constructible and copy assignable (for MPI send/receive)
+ *   - Preferably trivially copyable for optimal MPI performance
  *
  * The coordinator is responsible for managing the simulation space,
  * distributing local regions to worker nodes, and collecting results.
  */
-class MPICoordinator : public MPIWorker {
+template <typename AgentT>
+class MPICoordinator : public MPIWorker<AgentT> {
  private:
-  int num_processes_;                   // Total number of MPI processes
-  std::unique_ptr<Space> space_;        // Simulation space
-  std::vector<Space::Region> regions_;  // Cached regions for all processes
+  int num_processes_;                     // Total number of MPI processes
+  std::shared_ptr<Space<AgentT>> space_;  // Shared simulation space
+  std::vector<typename Space<AgentT>::Region>
+      regions_;  // Cached regions for all processes
 
  public:
   /**
    * @brief Constructs an MPICoordinator.
    * @param rank The MPI rank of this coordinator (typically 0)
    * @param num_processes The total number of MPI processes
-   * @param space Unique pointer to the simulation space
-   * @param split_function Function to split region into subregions
+   * @param space Shared pointer to the simulation space
    */
-  MPICoordinator(int rank, int num_processes, std::unique_ptr<Space> space,
-                 ParallelABM::SplitFunction split_function);
+  MPICoordinator(int rank, int num_processes,
+                 std::shared_ptr<Space<AgentT>> space);
 
   /**
    * @brief Sends local regions to all worker nodes via MPI.
@@ -55,5 +61,8 @@ class MPICoordinator : public MPIWorker {
    */
   void SendNeighborsToWorkers();
 };
+
+// Include implementation
+#include "MPICoordinator.inl"
 
 #endif  // PARALLELABM_MPICOORDINATOR_H

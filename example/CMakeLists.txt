@@ -1,8 +1,3 @@
-# Example application
-add_executable(example_app main.cpp)
+# Example applications for ParallelABM library
 
-# Link against the library
-target_link_libraries(example_app PRIVATE ParallelABM)
-
-# Installation rule
-install(TARGETS example_app DESTINATION bin)
+add_subdirectory(game-of-life)

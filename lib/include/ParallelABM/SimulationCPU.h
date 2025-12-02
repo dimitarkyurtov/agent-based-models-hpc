@@ -9,7 +9,12 @@ namespace ParallelABM {
 
 /**
  * @class SimulationCPU
- * @brief CPU-specific simulation implementation using multi-threading.
+ * @brief Template-based CPU simulation implementation using multi-threading.
+ *
+ * @tparam AgentT The concrete agent type for this simulation. Must be:
+ *   - Default constructible (for MPI receive operations)
+ *   - Copy constructible and copy assignable (for MPI send/receive)
+ *   - Preferably trivially copyable for optimal MPI performance
  *
  * SimulationCPU executes agent-based simulations on CPU by distributing
  * work across multiple threads. Each thread processes a subregion of agents
@@ -25,10 +30,11 @@ namespace ParallelABM {
  * @see Simulation Base class providing MPI coordination
  * @see ModelCPU CPU interaction rule implementation
  */
-class SimulationCPU : public Simulation<ModelCPU> {
+template <typename AgentT>
+class SimulationCPU : public Simulation<AgentT, ModelCPU<AgentT>> {
  public:
   // Inherit base class constructors
-  using Simulation<ModelCPU>::Simulation;
+  using Simulation<AgentT, ModelCPU<AgentT>>::Simulation;
 
   // Copy constructor - deleted (inherited from base class semantics)
   SimulationCPU(const SimulationCPU&) = delete;
@@ -51,11 +57,14 @@ class SimulationCPU : public Simulation<ModelCPU> {
    *
    * @param local_region Pointer to the local region containing agents
    */
-  void LaunchModel(LocalRegion* local_region) override;
+  void LaunchModel(LocalRegion<AgentT>* local_region) override;
 
   ~SimulationCPU() override = default;
 };
 
 }  // namespace ParallelABM
+
+// Include implementation
+#include "SimulationCPU.inl"
 
 #endif  // PARALLELABM_SIMULATIONCPU_H

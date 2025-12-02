@@ -33,7 +33,7 @@ jobs:
           -v ${{ github.workspace }}:/workspace \
           -w /workspace \
           mpi-nvidia-ubuntu:latest \
-          bash -c "cmake -B build -DCMAKE_EXPORT_COMPILE_COMMANDS=ON && find lib example -type f -name '*.cpp' | xargs clang-tidy -p build --warnings-as-errors='*'"
+          bash -c "cmake -B build -DCMAKE_EXPORT_COMPILE_COMMANDS=ON && find lib example -type f \( -name '*.cpp' \) ! -path '*/external/*' ! -path '*/imgui*' | xargs clang-tidy -p build --warnings-as-errors='*'"
 
     - name: Build application
       run: |

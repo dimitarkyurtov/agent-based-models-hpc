@@ -133,7 +133,7 @@ void SimulationCUDA<AgentType>::LaunchModel(LocalRegion* local_region) {
 
   // Split local region into subregions (one per GPU)
   std::vector<LocalSubRegion> subregions =
-      local_region->SplitIntoSubRegions(static_cast<int>(kNumGpus));
+      this->space_->SplitLocalRegion(*local_region, static_cast<int>(kNumGpus));
 
   std::vector<Agent>& all_agents = local_region->GetAgents();
   const auto& neighbors = local_region->GetNeighbors();
@@ -235,10 +235,10 @@ void SimulationCUDA<AgentType>::LaunchModel(LocalRegion* local_region) {
     const int kNumBlocks =
         (ctx.num_agents + kThreadsPerBlock - 1) / kThreadsPerBlock;
 
-    // Launch the interaction rule kernel
-    this->model
-        .interaction_rule<<<kNumBlocks, kThreadsPerBlock, 0, ctx.stream>>>(
-            ctx.d_agents, ctx.num_agents, ctx.d_neighbors, ctx.num_neighbors);
+    // Get the interaction kernel and launch it
+    auto kernel = this->model.GetInteractionKernel();
+    kernel<<<kNumBlocks, kThreadsPerBlock, 0, ctx.stream>>>(
+        ctx.d_agents, ctx.num_agents, ctx.d_neighbors, ctx.num_neighbors);
 
     CheckCudaError(cudaGetLastError(), "kernel launch");
   }

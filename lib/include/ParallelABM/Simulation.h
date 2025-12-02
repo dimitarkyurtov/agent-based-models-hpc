@@ -6,7 +6,6 @@
 #include <memory>
 #include <utility>
 
-#include "Agent.h"
 #include "Environment.h"
 #include "LocalRegion.h"
 #include "Logger.h"
@@ -17,28 +16,28 @@
 
 // Orchestrates simulation execution across timesteps with MPI distribution.
 // The workload is divided among MPI processes statically.
-template <typename ModelType>
+template <typename AgentT, typename ModelType>
 class Simulation {
  public:
-  ModelType model;                                   // Agent interaction model
-  std::unique_ptr<MPIWorker> mpi_worker_ = nullptr;  // MPI worker node
+  std::shared_ptr<ModelType> model;  // Agent interaction model
+  std::unique_ptr<MPIWorker<AgentT>> mpi_worker_ = nullptr;  // MPI worker node
   ParallelABM::Environment& environment;  // Compute resource environment
 
   // Initialize MPI, space, model, and calculate this process's region
-  Simulation(int& argc, char**& argv, std::unique_ptr<Space> space,
-             const ModelType& model, ParallelABM::Environment& environment,
-             ParallelABM::SplitFunction split_function);
+  Simulation(int& argc, char**& argv, std::unique_ptr<Space<AgentT>> space,
+             std::shared_ptr<ModelType> model,
+             ParallelABM::Environment& environment);
 
   // Launch model computation on the local region.
   // Processes agents using the model's interaction rule.
   // NOLINTNEXTLINE(portability-template-virtual-member-function)
   // NOLINTNEXTLINE(clang-diagnostic-unused-parameter)
-  virtual void LaunchModel(ParallelABM::LocalRegion* local_region) = 0;
+  virtual void LaunchModel(ParallelABM::LocalRegion<AgentT>* local_region) = 0;
 
   // Called at the end of each timestep. Override to perform custom actions
   // such as rendering, logging, or data collection.
   // NOLINTNEXTLINE(portability-template-virtual-member-function)
-  virtual void OnTimeStepCompleted(unsigned int timestep) {}
+  virtual void OnTimeStepCompleted(unsigned int /*timestep*/) {}
 
   // Execute simulation for given number of timesteps
   void Start(unsigned int timesteps);
@@ -55,16 +54,22 @@ class Simulation {
   // Move assignment - deleted
   Simulation& operator=(Simulation&&) = delete;
 
-  virtual ~Simulation() = default;
+  virtual ~Simulation() { MPI_Finalize(); };
+
+ protected:
+  std::shared_ptr<Space<AgentT>>
+      space_;  // Shared ownership of simulation space
 };
 
-template <typename ModelType>
-Simulation<ModelType>::Simulation(int& argc, char**& argv,
-                                  std::unique_ptr<Space> space,
-                                  const ModelType& model,
-                                  ParallelABM::Environment& environment,
-                                  ParallelABM::SplitFunction split_function)
-    : model(std::move(model)), mpi_worker_(nullptr), environment(environment) {
+template <typename AgentT, typename ModelType>
+Simulation<AgentT, ModelType>::Simulation(int& argc, char**& argv,
+                                          std::unique_ptr<Space<AgentT>> space,
+                                          std::shared_ptr<ModelType> model,
+                                          ParallelABM::Environment& environment)
+    : model(model),
+      mpi_worker_(nullptr),
+      environment(environment),
+      space_(std::move(space)) {
   MPI_Init(&argc, &argv);
 
   int rank = 0;
@@ -80,19 +85,19 @@ Simulation<ModelType>::Simulation(int& argc, char**& argv,
 
   if (rank == 0) {
     // Coordinator inherits from MPIWorker
-    mpi_worker_ = std::make_unique<MPICoordinator>(
-        rank, num_processes, std::move(space), split_function);
+    mpi_worker_ =
+        std::make_unique<MPICoordinator<AgentT>>(rank, num_processes, space_);
     ParallelABM::Logger::GetInstance().Info(
         "Simulation: Created MPICoordinator");
   } else {
-    mpi_worker_ = std::make_unique<MPIWorker>(rank, split_function);
+    mpi_worker_ = std::make_unique<MPIWorker<AgentT>>(rank);
     ParallelABM::Logger::GetInstance().Info("Simulation: Created MPIWorker");
   }
 }
 
-template <typename ModelType>
-void Simulation<ModelType>::Start(unsigned int timesteps) {
-  auto* coordinator = dynamic_cast<MPICoordinator*>(mpi_worker_.get());
+template <typename AgentT, typename ModelType>
+void Simulation<AgentT, ModelType>::Start(unsigned int timesteps) {
+  auto* coordinator = dynamic_cast<MPICoordinator<AgentT>*>(mpi_worker_.get());
 
   if (coordinator != nullptr) {
     coordinator->SendLocalRegionsToWorkers();
@@ -107,7 +112,7 @@ void Simulation<ModelType>::Start(unsigned int timesteps) {
       mpi_worker_->ReceiveNeighbors();
     }
 
-    ParallelABM::LocalRegion*
+    ParallelABM::LocalRegion<AgentT>*
         local_region =  // NOLINT(cppcoreguidelines-init-variables)
         mpi_worker_->GetLocalRegion();
     LaunchModel(local_region);

@@ -4,115 +4,89 @@
 #include <functional>
 #include <vector>
 
-#include "Agent.h"
 #include "Model.h"
 
 /**
  * @class ModelCPU
- * @brief CPU implementation of the Model interface for multi-threaded agent
+ * @brief Template-based CPU implementation for multi-threaded agent
  * interactions.
  *
+ * @tparam AgentT The concrete agent type for this model. Must be:
+ *   - Copy constructible and copy assignable
+ *   - Default constructible (for container operations)
+ *
  * ModelCPU provides a CPU-based implementation of the computational model where
- * agent interactions are defined through a std::function. This implementation
+ * agent interactions are defined through a virtual method. This implementation
  * is designed for execution on CPU cores using threading for parallelism.
  *
  * ARCHITECTURE:
  * =============
- * This class stores a single member variable - a function that defines the
- * interaction rule. When the library needs to process a region of agents on
- * the CPU, it invokes this interaction rule function.
+ * This is an abstract base class that defines the interface for CPU-based
+ * models. Derived classes must implement the ComputeInteractions virtual method
+ * to define their specific interaction rules.
  *
- * INTERACTION RULE FUNCTION:
- * ==========================
- * The interaction rule is a user-provided function with the signature:
- *     void interactionRule(std::vector<std::reference_wrapper<Agent>>& agents,
- *                          const std::vector<Agent>& neighbors)
+ * INTERACTION RULE METHOD:
+ * ========================
+ * Derived classes must override ComputeInteractions with the signature:
+ *     void ComputeInteractions(std::vector<std::reference_wrapper<AgentT>>&
+ * agents, const std::vector<std::reference_wrapper<const AgentT>>& neighbors)
  *
  * Parameters:
  * - agents: Vector of references to agents to process (mutable)
- * - neighbors: Vector of neighbor agents (read-only)
+ * - neighbors: Vector of references to neighbor agents (read-only)
  *
  * USAGE EXAMPLE:
  * ==============
  *
- * // Define an interaction rule for a simple physics simulation
- * auto myPhysicsRule = [](std::vector<std::reference_wrapper<Agent>>& agents,
- *                         const std::vector<Agent>& neighbors) {
- *     const double dt = 0.01;
- *     const double damping = 0.99;
+ * struct MyCustomAgent {
+ *   double x, y;
+ *   double vx, vy;
+ * };
  *
- *     for (Agent& agent : agents) {
- *         // Cast to your specific agent type if needed
- *         auto& myAgent = static_cast<MyCustomAgent&>(agent);
+ * class MyPhysicsModel : public ModelCPU<MyCustomAgent> {
+ *  public:
+ *   MyPhysicsModel() = default;
  *
- *         // Update position based on velocity
- *         myAgent.x += myAgent.vx * dt;
- *         myAgent.y += myAgent.vy * dt;
+ *   void ComputeInteractions(
+ *       std::vector<std::reference_wrapper<MyCustomAgent>>& agents,
+ *       const std::vector<std::reference_wrapper<const MyCustomAgent>>&
+ * neighbors) override { const double dt = 0.01; const double damping = 0.99;
  *
- *         // Apply damping
- *         myAgent.vx *= damping;
- *         myAgent.vy *= damping;
+ *     for (MyCustomAgent& agent : agents) {
+ *         agent.x += agent.vx * dt;
+ *         agent.y += agent.vy * dt;
+ *         agent.vx *= damping;
+ *         agent.vy *= damping;
  *
- *         // Interact with other agents in the subregion
- *         for (Agent& other : agents) {
- *             if (&agent != &other.get()) {
- *                 // Calculate forces, collisions, etc.
- *             }
- *         }
- *
- *         // Interact with neighbor agents from other regions
- *         for (const Agent& neighbor : neighbors) {
+ *         for (const MyCustomAgent& neighbor : neighbors) {
  *             // Calculate forces, collisions with neighbors, etc.
  *         }
  *     }
+ *   }
  * };
  *
  * @see Model Base class defining the interface
  * @see ModelCUDA GPU implementation for CUDA devices
  */
+template <typename AgentT>
 class ModelCPU : public Model {
  public:
   /**
-   * @brief Function type for CPU interaction rules.
+   * @brief Function type for CPU interaction rules (deprecated).
    *
-   * This defines the signature of the interaction rule function:
-   * - Parameter 1: Vector of references to agents to process
-   * - Parameter 2: Const reference to vector of neighbor agents
-   * - Return: void (modifies agents in place via references)
+   * NOTE: This typedef is kept for reference but should not be used for new
+   * code. Use virtual method override instead.
    *
-   * The function does not need to be thread-safe as each subregion will be
-   * processed independently by a single thread.
+   * @deprecated Use ComputeInteractions virtual method override instead
    */
   using InteractionRuleCPU = std::function<void(
-      std::vector<std::reference_wrapper<Agent>>&, const std::vector<Agent>&)>;
+      std::vector<std::reference_wrapper<AgentT>>&,
+      const std::vector<std::reference_wrapper<const AgentT>>&)>;
 
   /**
-   * @brief The CPU interaction rule function.
-   *
-   * This member variable stores the user-provided function that defines
-   * how agents interact with each other in the simulation.
+   * @brief Default constructor.
    */
-  InteractionRuleCPU interaction_rule_;
-
-  /**
-   * @brief Constructs a ModelCPU with the specified interaction rule.
-   *
-   * @param rule Function defining agent interactions. Must be callable.
-   *
-   * Example:
-   *     auto myRule = [](std::vector<std::reference_wrapper<Agent>>& agents,
-   *                      const std::vector<Agent>& neighbors) { ... };
-   *     ModelCPU model(myRule);
-   */
-  explicit ModelCPU(InteractionRuleCPU rule)
-      : interaction_rule_(std::move(rule)) {}
-
-  /**
-   * @brief Default constructor - deleted.
-   *
-   * A ModelCPU must be constructed with an interaction rule.
-   */
-  ModelCPU() = delete;
+  ModelCPU() = default;
 
   /**
    * @brief Copy constructor.
@@ -138,6 +112,21 @@ class ModelCPU : public Model {
    * @brief Virtual destructor for proper cleanup.
    */
   ~ModelCPU() override = default;
+
+  /**
+   * @brief Compute agent interactions for a subregion.
+   *
+   * This pure virtual method must be implemented by derived classes to define
+   * the interaction logic for the simulation. Called by SimulationCPU for each
+   * subregion being processed in parallel.
+   *
+   * @param agents Vector of references to agents to process (mutable)
+   * @param neighbors Vector of references to neighbor agents from adjacent
+   * regions (read-only)
+   */
+  virtual void ComputeInteractions(
+      std::vector<std::reference_wrapper<AgentT>>& agents,
+      const std::vector<std::reference_wrapper<const AgentT>>& neighbors) = 0;
 };
 
 #endif  // PARALLELABM_MODELCPU_H

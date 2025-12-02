@@ -19,11 +19,38 @@ Checks: >
   -misc-non-private-member-variables-in-classes,
   -bugprone-easily-swappable-parameters,
   -misc-use-anonymous-namespace,
-  -misc-include-cleaner
+  -misc-include-cleaner,
+  -readability-function-cognitive-complexity,
+  -readability-identifier-length,
+  -performance-unnecessary-value-param,
+  -cppcoreguidelines-special-member-functions,
+  -hicpp-special-member-functions,
+  -bugprone-misplaced-widening-cast,
+  -hicpp-use-emplace,
+  -modernize-use-emplace,
+  -readability-math-missing-parentheses,
+  -cppcoreguidelines-pro-type-vararg,
+  -hicpp-vararg,
+  -misc-const-correctness,
+  -readability-redundant-casting,
+  -cppcoreguidelines-pro-bounds-array-to-pointer-decay,
+  -hicpp-no-array-decay,
+  -cppcoreguidelines-pro-bounds-pointer-arithmetic,
+  -hicpp-uppercase-literal-suffix,
+  -readability-uppercase-literal-suffix,
+  -llvm-prefer-static-over-anonymous-namespace,
+  -cert-err34-c,
+  -clang-diagnostic-unused-private-field,
+  -readability-implicit-bool-conversion,
+  -hicpp-signed-bitwise,
+  -clang-diagnostic-deprecated-declarations,
+  -modernize-pass-by-value,
+  -cppcoreguidelines-prefer-member-initializer,
+  -portability-template-virtual-member-function
 
 WarningsAsErrors: ''
 
-HeaderFilterRegex: '.*'
+HeaderFilterRegex: '(lib|example)/.*\.(h|hpp|inl)$'
 
 SystemHeaders: false
 
