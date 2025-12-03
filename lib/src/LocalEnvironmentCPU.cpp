@@ -14,6 +14,11 @@ LocalEnvironmentCPU::LocalEnvironmentCPU() {
   cpuCores_ = (kConcurrency > 0) ? static_cast<std::uint32_t>(kConcurrency) : 1;
 }
 
+LocalEnvironmentCPU::LocalEnvironmentCPU(std::uint32_t cpu_cores)
+    : cpuCores_(cpu_cores > 0 ? cpu_cores : 1) {
+  // Ensure at least 1 core is configured
+}
+
 std::uint32_t LocalEnvironmentCPU::GetNumberOfCPUCores() const {
   return cpuCores_;
 }

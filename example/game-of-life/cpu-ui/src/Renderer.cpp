@@ -1,16 +1,112 @@
 #include "Renderer.h"
 
 #include <imgui.h>
+#include <imgui_impl_glfw.h>
+#include <imgui_impl_opengl3.h>
 
 #include <iostream>
 
 #include "Cell.h"
 #include "GameOfLifeSpace.h"
 
-Renderer::Renderer(int width, int height) : width_(width), height_(height) {}
+Renderer::Renderer(int width, int height, int window_width, int window_height)
+    : width_(width),
+      height_(height),
+      window_width_(window_width),
+      window_height_(window_height) {}
 
-void Renderer::Render(const GameOfLifeSpace& space,
-                      unsigned int timestep) const {
+Renderer::~Renderer() {
+  // Cleanup ImGui
+  if (window_ != nullptr) {
+    ImGui_ImplOpenGL3_Shutdown();
+    ImGui_ImplGlfw_Shutdown();
+    ImGui::DestroyContext();
+
+    // Cleanup GLFW
+    glfwDestroyWindow(window_);
+    glfwTerminate();
+  }
+}
+
+bool Renderer::Setup() {
+  // Initialize GLFW
+  if (!glfwInit()) {
+    std::cerr << "Error: Failed to initialize GLFW.\n";
+    return false;
+  }
+
+  // Set OpenGL version (3.3 Core)
+  glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
+  glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
+  glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
+#ifdef __APPLE__
+  glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GL_TRUE);
+#endif
+
+  // Create window
+  window_ = glfwCreateWindow(window_width_, window_height_,
+                             "Game of Life - Simulation", nullptr, nullptr);
+  if (window_ == nullptr) {
+    std::cerr << "Error: Failed to create GLFW window.\n";
+    glfwTerminate();
+    return false;
+  }
+  glfwMakeContextCurrent(window_);
+  glfwSwapInterval(1);  // Enable vsync
+
+  // Initialize ImGui
+  IMGUI_CHECKVERSION();
+  ImGui::CreateContext();
+  ImGuiIO& io = ImGui::GetIO();
+  io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;
+
+  // Setup ImGui style
+  ImGui::StyleColorsDark();
+
+  // Setup Platform/Renderer backends
+  ImGui_ImplGlfw_InitForOpenGL(window_, true);
+  ImGui_ImplOpenGL3_Init("#version 330");
+
+  return true;
+}
+
+bool Renderer::Render(const GameOfLifeSpace& space, unsigned int timestep) {
+  if (window_ == nullptr || glfwWindowShouldClose(window_)) {
+    return false;
+  }
+
+  // Poll events
+  glfwPollEvents();
+
+  // Start ImGui frame
+  ImGui_ImplOpenGL3_NewFrame();
+  ImGui_ImplGlfw_NewFrame();
+  ImGui::NewFrame();
+
+  // Render the grid content
+  RenderContent(space, timestep);
+
+  // Rendering
+  ImGui::Render();
+  int display_w = 0;
+  int display_h = 0;
+  glfwGetFramebufferSize(window_, &display_w, &display_h);
+  glViewport(0, 0, display_w, display_h);
+  glClearColor(0.1f, 0.1f, 0.1f, 1.0f);
+  glClear(GL_COLOR_BUFFER_BIT);
+  ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
+
+  glfwSwapBuffers(window_);
+
+  return true;
+}
+
+bool Renderer::ShouldClose() const noexcept {
+  return window_ != nullptr && glfwWindowShouldClose(window_);
+}
+
+void Renderer::RenderContent(const GameOfLifeSpace& space,
+                             unsigned int timestep) const {
   // Create ImGui window with title
   ImGui::Begin("Conway's Game of Life");
 

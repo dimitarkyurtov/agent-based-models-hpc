@@ -13,18 +13,16 @@ GameOfLifeSimulation::GameOfLifeSimulation(
       renderer_(renderer),
       frame_delay_(frame_delay) {}
 
-void GameOfLifeSimulation::OnTimeStepCompleted(
-    [[maybe_unused]] unsigned int timestep) {
+void GameOfLifeSimulation::OnTimeStepCompleted(unsigned int timestep) {
   // Only render on the coordinator process (rank 0)
   int rank = 0;
   MPI_Comm_rank(MPI_COMM_WORLD, &rank);
 
   if (rank == 0) {
-    // Get the local region which has the complete agent state on coordinator
-    const ParallelABM::LocalRegion<Cell>* local_region =
-        mpi_worker_->GetLocalRegion();
-    if (local_region != nullptr) {
-      // renderer_.Render(local_region->GetAgents(), timestep);
+    // Access the space from the base class to render the current state
+    auto* game_space = dynamic_cast<GameOfLifeSpace*>(space_.get());
+    if (game_space != nullptr) {
+      renderer_.Render(*game_space, timestep);
     }
 
     // Add delay for visualization

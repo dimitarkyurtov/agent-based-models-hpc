@@ -12,12 +12,23 @@ namespace ParallelABM {
  *
  * Provides environment information for local execution outside of a
  * SLURM cluster. Uses std::thread::hardware_concurrency() to determine
- * the number of available CPU cores. Reports zero GPUs as this class
- * is intended for CPU-only execution.
+ * the number of available CPU cores, or allows explicit configuration.
+ * Reports zero GPUs as this class is intended for CPU-only execution.
  */
 class LocalEnvironmentCPU : public Environment {
  public:
+  /**
+   * @brief Construct with automatic CPU core detection
+   *
+   * Detects available CPU cores using std::thread::hardware_concurrency()
+   */
   LocalEnvironmentCPU();
+
+  /**
+   * @brief Construct with explicit CPU core count
+   * @param cpu_cores Number of CPU cores to use (must be > 0)
+   */
+  explicit LocalEnvironmentCPU(std::uint32_t cpu_cores);
 
   /**
    * @brief Get CPU cores using std::thread::hardware_concurrency()

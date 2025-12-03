@@ -18,6 +18,11 @@ add_executable(game_of_life_cpu_ui ${GAMEOFLIFE_SOURCES})
 # Set C++20 standard
 target_compile_features(game_of_life_cpu_ui PRIVATE cxx_std_20)
 
+# Suppress OpenGL deprecation warnings on macOS
+if(APPLE)
+  target_compile_options(game_of_life_cpu_ui PRIVATE -Wno-deprecated-declarations)
+endif()
+
 # Include directories for local headers
 target_include_directories(game_of_life_cpu_ui
   PRIVATE

@@ -21,8 +21,6 @@ void GameOfLifeSpace::Initialize() {
   for (int y = 0; y < height_; ++y) {
     for (int x = 0; x < width_; ++x) {
       const bool kAlive = dist(rng_) < density_;
-      std::cout << "Creating cell at (" << x << ", " << y
-                << ") with state: " << (kAlive ? "Alive" : "Dead") << "\n";
       agents.push_back(Cell(x, y, kAlive));
     }
   }

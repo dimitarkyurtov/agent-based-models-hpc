@@ -23,6 +23,11 @@ RUN apt-get update && apt-get install -y \
     python3 \
     python3-pip \
     ssh \
+    libgl1-mesa-dev \
+    libglu1-mesa-dev \
+    libglfw3-dev \
+    libglew-dev \
+    xorg-dev \
     && rm -rf /var/lib/apt/lists/*
 
 # Install OpenMPI
