@@ -1,5 +1,7 @@
 #include "GameOfLifeModel.h"
 
+#include <unordered_map>
+
 GameOfLifeModel::GameOfLifeModel(int width, int height)
     : width_(width), height_(height) {}
 
@@ -7,6 +9,20 @@ void GameOfLifeModel::ComputeInteractions(
     std::vector<std::reference_wrapper<Cell>>& agents,
     [[maybe_unused]] const std::vector<std::reference_wrapper<const Cell>>&
         neighbors) {
+  // Build coordinate-to-cell lookup map for O(1) neighbor access
+  std::unordered_map<int, const Cell*> cell_map;
+  cell_map.reserve(agents.size() + neighbors.size());
+
+  for (const Cell& cell : agents) {
+    const int key = cell.y * width_ + cell.x;
+    cell_map[key] = &cell;
+  }
+
+  for (const Cell& neighbor_cell : neighbors) {
+    const int key = neighbor_cell.y * width_ + neighbor_cell.x;
+    cell_map[key] = &neighbor_cell;
+  }
+
   // First pass: compute next_alive for all cells
   for (Cell& cell : agents) {
     // Count alive neighbors (8-connected)
@@ -21,29 +37,12 @@ void GameOfLifeModel::ComputeInteractions(
         // Calculate neighbor coordinates with wrapping (toroidal grid)
         const int kNx = (cell.x + dx + width_) % width_;
         const int kNy = (cell.y + dy + height_) % height_;
+        const int key = kNy * width_ + kNx;
 
-        // Search in local agents first
-        bool found = false;
-        for (const Cell& other_cell : agents) {
-          if (other_cell.x == kNx && other_cell.y == kNy) {
-            if (other_cell.alive) {
-              ++alive_neighbors;
-            }
-            found = true;
-            break;
-          }
-        }
-
-        // If not found in local agents, search in neighbors
-        if (!found) {
-          for (const Cell& neighbor_cell : neighbors) {
-            if (neighbor_cell.x == kNx && neighbor_cell.y == kNy) {
-              if (neighbor_cell.alive) {
-                ++alive_neighbors;
-              }
-              break;
-            }
-          }
+        // O(1) lookup in hash map
+        auto it = cell_map.find(key);
+        if (it != cell_map.end() && it->second->alive) {
+          ++alive_neighbors;
         }
       }
     }

@@ -20,17 +20,17 @@
 
 namespace {
 
-/// Default grid width
-constexpr int kDefaultWidth = 50;
+/// Grid width
+constexpr int kWidth = 100;
 
-/// Default grid height
-constexpr int kDefaultHeight = 25;
+/// Grid height
+constexpr int kHeight = 40;
 
-/// Default initial alive cell density
-constexpr double kDefaultDensity = 0.3;
+/// Initial alive cell density (not used with deterministic patterns)
+constexpr double kDensity = 0.3;
 
-/// Default number of timesteps
-constexpr int kDefaultTimesteps = 100;
+/// Number of timesteps
+constexpr int kTimesteps = 2'000;
 
 /// Frame delay in milliseconds
 constexpr int kFrameDelayMs = 100;
@@ -41,21 +41,19 @@ constexpr int kWindowWidth = 1280;
 /// Window height
 constexpr int kWindowHeight = 720;
 
+/// Default number of threads
+constexpr int kDefaultThreads = 1;
+
 /**
  * @brief Print usage information to stderr.
  * @param program_name Name of the executable
  */
 void PrintUsage(const char* program_name) {
-  std::cerr << "Usage: " << program_name
-            << " [width] [height] [density] [timesteps]\n"
+  std::cerr << "Usage: " << program_name << " [num_threads]\n"
             << "\n"
             << "Arguments:\n"
-            << "  width     - Grid width (default: " << kDefaultWidth << ")\n"
-            << "  height    - Grid height (default: " << kDefaultHeight << ")\n"
-            << "  density   - Initial alive cell density 0.0-1.0 (default: "
-            << kDefaultDensity << ")\n"
-            << "  timesteps - Number of simulation steps (default: "
-            << kDefaultTimesteps << ")\n";
+            << "  num_threads - Number of threads to use (default: "
+            << kDefaultThreads << ")\n";
 }
 
 }  // namespace
@@ -63,9 +61,9 @@ void PrintUsage(const char* program_name) {
 /**
  * @brief Main entry point for the Game of Life simulation.
  *
- * Parses command line arguments, initializes the simulation environment,
- * creates the Game of Life model and space, sets up the renderer,
- * and runs the simulation with visualization.
+ * Parses the number of threads from command line arguments,
+ * initializes the simulation environment with deterministic patterns,
+ * sets up the renderer, and runs the simulation with visualization.
  *
  * @param argc Argument count
  * @param argv Argument values
@@ -73,62 +71,40 @@ void PrintUsage(const char* program_name) {
  */
 int main(int argc, char* argv[]) {
   try {
-    // Parse command line arguments
-    int width = kDefaultWidth;
-    int height = kDefaultHeight;
-    double density = kDefaultDensity;
-    int timesteps = kDefaultTimesteps;
+    // Parse command line arguments for number of threads
+    int num_threads = kDefaultThreads;
 
     if (argc > 1) {
       if (std::string(argv[1]) == "-h" || std::string(argv[1]) == "--help") {
         PrintUsage(argv[0]);
         return 0;
       }
-      width = std::atoi(argv[1]);
-    }
-    if (argc > 2) {
-      height = std::atoi(argv[2]);
-    }
-    if (argc > 3) {
-      density = std::atof(argv[3]);
-    }
-    if (argc > 4) {
-      timesteps = std::atoi(argv[4]);
+      num_threads = std::atoi(argv[1]);
     }
 
-    // Validate parameters
-    if (width <= 0 || height <= 0) {
-      std::cerr << "Error: Width and height must be positive.\n";
+    // Validate number of threads
+    if (num_threads <= 0) {
+      std::cerr << "Error: Number of threads must be positive.\n";
       PrintUsage(argv[0]);
       return 1;
     }
 
-    if (density < 0.0 || density > 1.0) {
-      std::cerr << "Error: Density must be between 0.0 and 1.0.\n";
-      return 1;
-    }
-
-    if (timesteps <= 0) {
-      std::cerr << "Error: Timesteps must be positive.\n";
-      return 1;
-    }
-
     // Create renderer and initialize rendering system
-    Renderer renderer(width, height, kWindowWidth, kWindowHeight);
+    Renderer renderer(kWidth, kHeight, kWindowWidth, kWindowHeight);
     if (!renderer.Setup()) {
       std::cerr << "Error: Failed to setup renderer.\n";
       return 1;
     }
 
-    // Create local CPU environment with exactly 1 thread
-    ParallelABM::LocalEnvironmentCPU environment(1);
+    // Create local CPU environment with specified number of threads
+    ParallelABM::LocalEnvironmentCPU environment(num_threads);
 
-    // Create space and initialize with random cells
-    auto space = std::make_unique<GameOfLifeSpace>(width, height, density);
+    // Create space and initialize with deterministic patterns
+    auto space = std::make_unique<GameOfLifeSpace>(kWidth, kHeight, kDensity);
     space->Initialize();
 
     // Create the Game of Life model
-    auto model = std::make_shared<GameOfLifeModel>(width, height);
+    auto model = std::make_shared<GameOfLifeModel>(kWidth, kHeight);
 
     // Create simulation with rendering callback
     GameOfLifeSimulation simulation(argc, argv, std::move(space), model,
@@ -136,7 +112,7 @@ int main(int argc, char* argv[]) {
                                     std::chrono::milliseconds(kFrameDelayMs));
 
     // Run the simulation for the specified number of timesteps
-    simulation.Start(timesteps);
+    simulation.Start(kTimesteps);
 
     return 0;
   } catch (const std::exception& e) {
