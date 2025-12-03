@@ -61,10 +61,8 @@ class GameOfLifeModel : public ModelCPU<Cell> {
    * @param neighbors Vector of references to neighbor cells from adjacent
    * regions (read-only)
    */
-  void ComputeInteractions(
-      std::vector<std::reference_wrapper<Cell>>& agents,
-      const std::vector<std::reference_wrapper<const Cell>>& neighbors)
-      override;
+  void ComputeInteractions(std::vector<std::reference_wrapper<Cell>>& agents,
+                           const std::vector<Cell>& neighbors) override;
 
  private:
   int width_;   ///< Grid width for neighbor calculation

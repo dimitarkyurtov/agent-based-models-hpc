@@ -30,7 +30,7 @@ constexpr int kHeight = 40;
 constexpr double kDensity = 0.3;
 
 /// Number of timesteps
-constexpr int kTimesteps = 2'000;
+constexpr int kTimesteps = 1'000;
 
 /// Frame delay in milliseconds
 constexpr int kFrameDelayMs = 100;

@@ -26,6 +26,6 @@ void GameOfLifeSimulation::OnTimeStepCompleted(unsigned int timestep) {
     }
 
     // Add delay for visualization
-    // std::this_thread::sleep_for(frame_delay_);
+    std::this_thread::sleep_for(frame_delay_);
   }
 }

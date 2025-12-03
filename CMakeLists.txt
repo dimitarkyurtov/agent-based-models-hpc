@@ -31,6 +31,10 @@ option(BUILD_TESTING "Build tests" ON)
 # Add external dependencies
 add_subdirectory(external/imgui-cmake)
 
+# Add BS::thread_pool as an interface library (header-only)
+add_library(ThreadPool INTERFACE)
+target_include_directories(ThreadPool INTERFACE ${CMAKE_CURRENT_SOURCE_DIR}/external/thread-pool/include)
+
 # Add subdirectories
 add_subdirectory(lib)
 add_subdirectory(example)

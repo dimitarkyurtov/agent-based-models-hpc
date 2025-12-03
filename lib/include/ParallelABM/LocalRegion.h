@@ -174,11 +174,13 @@ class LocalSubRegion {
    * @brief Construct a LocalSubRegion with specified parameters
    * @param indices Agent indices within the parent region to process
    * @param local_region Non-owning pointer to the parent LocalRegion
-   * @param neighbors References to neighboring agents relevant to this
-   * subregion
+   * @param neighbor_indices Indices to neighboring agents for this subregion.
+   *        Positive indices (0, 1, 2, ...) refer to agents in the parent
+   * region. Negative indices (-1, -2, -3, ...) refer to parent's neighbors
+   * where -1 = parent_neighbors[0], -2 = parent_neighbors[1], etc.
    */
   LocalSubRegion(std::vector<int> indices, LocalRegion<AgentT>* local_region,
-                 const std::vector<AgentT>& neighbors);
+                 std::vector<int> neighbor_indices);
 
   /**
    * @brief Default copy constructor
@@ -224,17 +226,18 @@ class LocalSubRegion {
   [[nodiscard]] LocalRegion<AgentT>* GetLocalRegion() noexcept;
 
   /**
-   * @brief Get the neighboring agents for this subregion
-   * @return Const reference to the neighbor references vector
+   * @brief Get the neighbor indices for this subregion
+   * @return Const reference to the neighbor_indices vector.
+   *         Positive indices refer to parent region agents.
+   *         Negative indices refer to parent region neighbors.
    */
-  [[nodiscard]] const std::vector<std::reference_wrapper<const AgentT>>&
-  GetNeighbors() const noexcept;
+  [[nodiscard]] const std::vector<int>& GetNeighborIndices() const noexcept;
 
  private:
   std::vector<int> indices_;           ///< Indices into parent's agent vector
   LocalRegion<AgentT>* local_region_;  ///< Non-owning pointer to parent region
-  std::vector<std::reference_wrapper<const AgentT>>
-      neighbors_;  ///< References to neighboring agents for calculations
+  std::vector<int> neighbor_indices_;  ///< Indices to neighbors (+ = local
+                                       ///< agents, - = parent neighbors)
 };
 
 }  // namespace ParallelABM

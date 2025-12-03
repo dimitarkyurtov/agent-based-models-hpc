@@ -47,6 +47,7 @@ target_include_directories(ParallelABM
 target_link_libraries(ParallelABM
   PUBLIC
     MPI::MPI_CXX
+    ThreadPool
 )
 
 if(CUDA)

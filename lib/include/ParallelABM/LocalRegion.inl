@@ -40,16 +40,10 @@ void LocalRegion<AgentT>::SetNeighbors(std::vector<AgentT> neighbors) {
 template <typename AgentT>
 LocalSubRegion<AgentT>::LocalSubRegion(
     std::vector<int> indices, LocalRegion<AgentT>* local_region,
-    const std::vector<AgentT>& neighbors)
+    std::vector<int> neighbor_indices)
     : indices_(std::move(indices)),
       local_region_(local_region),
-      neighbors_() {
-  // Convert vector<AgentT> to vector<reference_wrapper<const AgentT>>
-  neighbors_.reserve(neighbors.size());
-  for (const auto& neighbor : neighbors) {
-    neighbors_.push_back(std::cref(neighbor));
-  }
-}
+      neighbor_indices_(std::move(neighbor_indices)) {}
 
 template <typename AgentT>
 const std::vector<int>& LocalSubRegion<AgentT>::GetIndices() const noexcept {
@@ -68,9 +62,9 @@ LocalRegion<AgentT>* LocalSubRegion<AgentT>::GetLocalRegion() noexcept {
 }
 
 template <typename AgentT>
-const std::vector<std::reference_wrapper<const AgentT>>&
-LocalSubRegion<AgentT>::GetNeighbors() const noexcept {
-  return neighbors_;
+const std::vector<int>&
+LocalSubRegion<AgentT>::GetNeighborIndices() const noexcept {
+  return neighbor_indices_;
 }
 
 }  // namespace ParallelABM

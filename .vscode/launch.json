@@ -9,7 +9,7 @@
             "request": "launch",
             "name": "Debug Game of Life CPU UI",
             "program": "${workspaceFolder}/build/bin/game_of_life_cpu_ui",
-            "args": [],
+            "args": ["2"],
             "cwd": "${workspaceFolder}",
             "preLaunchTask": "build",
             "stopAtEntry": false,

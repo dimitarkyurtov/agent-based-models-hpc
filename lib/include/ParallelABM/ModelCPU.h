@@ -79,9 +79,9 @@ class ModelCPU : public Model {
    *
    * @deprecated Use ComputeInteractions virtual method override instead
    */
-  using InteractionRuleCPU = std::function<void(
-      std::vector<std::reference_wrapper<AgentT>>&,
-      const std::vector<std::reference_wrapper<const AgentT>>&)>;
+  using InteractionRuleCPU =
+      std::function<void(std::vector<std::reference_wrapper<AgentT>>&,
+                         const std::vector<AgentT>&)>;
 
   /**
    * @brief Default constructor.
@@ -126,7 +126,7 @@ class ModelCPU : public Model {
    */
   virtual void ComputeInteractions(
       std::vector<std::reference_wrapper<AgentT>>& agents,
-      const std::vector<std::reference_wrapper<const AgentT>>& neighbors) = 0;
+      const std::vector<AgentT>& neighbors) = 0;
 };
 
 #endif  // PARALLELABM_MODELCPU_H

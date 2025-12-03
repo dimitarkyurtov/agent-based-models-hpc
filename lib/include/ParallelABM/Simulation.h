@@ -39,6 +39,11 @@ class Simulation {
   // NOLINTNEXTLINE(portability-template-virtual-member-function)
   virtual void OnTimeStepCompleted(unsigned int /*timestep*/) {}
 
+  // Perform one-time setup before simulation starts.
+  // Override to initialize data structures that persist across timesteps.
+  // NOLINTNEXTLINE(portability-template-virtual-member-function)
+  virtual void Setup() {}
+
   // Execute simulation for given number of timesteps
   void Start(unsigned int timesteps);
 
@@ -104,6 +109,9 @@ void Simulation<AgentT, ModelType>::Start(unsigned int timesteps) {
   } else {
     mpi_worker_->ReceiveLocalRegion();
   }
+
+  // Perform one-time setup before the simulation loop
+  Setup();
 
   for (unsigned int step = 0; step < timesteps; ++step) {
     if (coordinator != nullptr) {

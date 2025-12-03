@@ -1,6 +1,8 @@
 #ifndef PARALLELABM_SIMULATIONCPU_H
 #define PARALLELABM_SIMULATIONCPU_H
 
+#include <BS_thread_pool.hpp>
+
 #include "LocalRegion.h"
 #include "ModelCPU.h"
 #include "Simulation.h"
@@ -49,17 +51,31 @@ class SimulationCPU : public Simulation<AgentT, ModelCPU<AgentT>> {
   SimulationCPU& operator=(SimulationCPU&&) = delete;
 
   /**
-   * @brief Execute model computation across CPU threads.
+   * @brief Perform one-time setup before simulation starts.
    *
    * Splits the local region into subregions based on available CPU cores
-   * from the environment and processes each subregion in parallel using
-   * the model's interaction rule.
+   * and stores them for reuse across timesteps.
+   */
+  void Setup() override;
+
+  /**
+   * @brief Execute model computation across CPU threads.
+   *
+   * Uses pre-computed subregions from Setup() to process each subregion
+   * in parallel using the model's interaction rule.
    *
    * @param local_region Pointer to the local region containing agents
    */
   void LaunchModel(LocalRegion<AgentT>* local_region) override;
 
   ~SimulationCPU() override = default;
+
+ private:
+  // Pre-computed subregions for reuse across timesteps
+  std::vector<LocalSubRegion<AgentT>> subregions_;
+
+  // Thread pool for reusing worker threads
+  std::unique_ptr<BS::thread_pool<>> thread_pool_;
 };
 
 }  // namespace ParallelABM

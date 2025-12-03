@@ -124,8 +124,9 @@ void Renderer::RenderContent(const GameOfLifeSpace& space,
 
   // Render each cell in the grid
   const auto& game_of_life_space = static_cast<const GameOfLifeSpace&>(space);
-  for (int y = 0; y < height_; ++y) {
-    for (int x = 0; x < width_; ++x) {
+
+  for (int x = 0; x < width_; ++x) {
+    for (int y = 0; y < height_; ++y) {
       const Cell& cell = game_of_life_space.GetCellAt(x, y);
 
       // Calculate cell position on screen
