@@ -1,6 +1,7 @@
 #include "GameOfLifeSpace.h"
 
 #include <ParallelABM/LocalRegion.h>
+#include <ParallelABM/Logger.h>
 
 #include <algorithm>
 #include <iostream>
@@ -121,43 +122,60 @@ std::vector<Space<Cell>::Region> GameOfLifeSpace::SplitIntoRegions(
       }
     }
 
-    // Collect neighbor cells from adjacent regions (boundary rows)
-    // For toroidal topology: first region wraps to last row, last region wraps
-    // to first row
-    std::vector<Cell> neighbors;
-
-    // Add cells from the row above this region (with wrap-around)
-    int k_above_row = 0;
-    if (current_row > 0) {
-      k_above_row = current_row - 1;
-    } else {
-      // First region: wrap to last row of the grid
-      k_above_row = height_ - 1;
-    }
-    for (int col = 0; col < width_; ++col) {
-      const int kIdx = CoordToIndex(col, k_above_row);
-      neighbors.push_back(agents[static_cast<size_t>(kIdx)]);
-    }
-
-    // Add cells from the row below this region (with wrap-around)
-    const int kLastRow = current_row + kRowsInRegion - 1;
-    int k_below_row = 0;
-    if (kLastRow < height_ - 1) {
-      k_below_row = kLastRow + 1;
-    } else {
-      // Last region: wrap to first row of the grid
-      k_below_row = 0;
-    }
-    for (int col = 0; col < width_; ++col) {
-      const int kIdx = CoordToIndex(col, k_below_row);
-      neighbors.push_back(agents[static_cast<size_t>(kIdx)]);
-    }
-
-    regions.emplace_back(region_id, std::move(indices), std::move(neighbors));
+    // Neighbors are now calculated dynamically via GetRegionNeighbours
+    // on each timestep, not during region creation
+    regions.emplace_back(region_id, std::move(indices));
     current_row += kRowsInRegion;
   }
 
   return regions;
+}
+
+std::vector<Cell> GameOfLifeSpace::GetRegionNeighbours(
+    const Region& region) const {
+  const std::vector<int>& indices = region.GetIndices();
+
+  // Early return if region has no agents
+  if (indices.empty()) {
+    return {};
+  }
+
+  std::vector<Cell> neighbors;
+
+  // Determine the first and last row of this region
+  // Indices are stored in row-major order (y * width_ + x)
+  const int kFirstIndex = indices.front();
+  const int kLastIndex = indices.back();
+  const int kFirstRow = kFirstIndex / width_;
+  const int kLastRow = kLastIndex / width_;
+
+  // Add cells from the row above this region (with toroidal wrap-around)
+  int k_above_row = 0;
+  if (kFirstRow > 0) {
+    k_above_row = kFirstRow - 1;
+  } else {
+    // First row of grid: wrap to last row
+    k_above_row = height_ - 1;
+  }
+  for (int col = 0; col < width_; ++col) {
+    const int kIdx = CoordToIndex(col, k_above_row);
+    neighbors.push_back(agents[static_cast<size_t>(kIdx)]);
+  }
+
+  // Add cells from the row below this region (with toroidal wrap-around)
+  int k_below_row = 0;
+  if (kLastRow < height_ - 1) {
+    k_below_row = kLastRow + 1;
+  } else {
+    // Last row of grid: wrap to first row
+    k_below_row = 0;
+  }
+  for (int col = 0; col < width_; ++col) {
+    const int kIdx = CoordToIndex(col, k_below_row);
+    neighbors.push_back(agents[static_cast<size_t>(kIdx)]);
+  }
+
+  return neighbors;
 }
 
 std::vector<ParallelABM::LocalSubRegion<Cell>>
@@ -169,17 +187,9 @@ GameOfLifeSpace::SplitLocalRegion(ParallelABM::LocalRegion<Cell>& region,
   const std::vector<Cell>& agents = region.GetAgents();
   const int kTotalAgents = static_cast<int>(agents.size());
 
-  // Calculate rows in this region (agents are in row-major order)
   const int kTotalRows = kTotalAgents / width_;
   const int kBaseRowsPerSubregion = kTotalRows / num_subregions;
   const int kExtraRows = kTotalRows % num_subregions;
-
-  std::cout << "Splitting local region into " << num_subregions
-            << " subregions\n";
-  std::cout << "Total agents: " << kTotalAgents
-            << ", Total rows: " << kTotalRows
-            << ", Base rows per subregion: " << kBaseRowsPerSubregion
-            << ", Extra rows: " << kExtraRows << "\n";
 
   int current_row = 0;
 
@@ -203,70 +213,51 @@ GameOfLifeSpace::SplitLocalRegion(ParallelABM::LocalRegion<Cell>& region,
     // -1 = parent_neighbors[0], -2 = parent_neighbors[1], etc.
     std::vector<int> neighbor_indices;
 
-    // Parent neighbors format (from SplitIntoRegions):
-    // - First width_ cells: row above the region (always present)
-    // - Last width_ cells: row below the region (always present)
     const auto& parent_neighbors = region.GetNeighbors();
     const bool kRegionSpansFullGrid = (kTotalRows == height_);
 
-    // Add neighbor indices from row above this subregion
     if (i > 0) {
-      // Not first subregion: get bottommost row of previous subregion
       const int kPrevSubregionLastRowStart = (current_row - 1) * width_;
       for (int col = 0; col < width_; ++col) {
         neighbor_indices.push_back(kPrevSubregionLastRowStart + col);
       }
     } else {
-      // First subregion: needs upper boundary from parent
       if (kRegionSpansFullGrid && num_subregions > 1) {
-        // Region spans full grid: wrap to last row of last subregion
         const int kLastSubregionLastRowStart = (kTotalRows - 1) * width_;
         for (int col = 0; col < width_; ++col) {
           neighbor_indices.push_back(kLastSubregionLastRowStart + col);
         }
       } else {
-        // Region doesn't span full grid: get parent's upper boundary
-        // Use negative indices to reference parent neighbors
         const size_t kUpperBoundarySize =
             std::min(static_cast<size_t>(width_), parent_neighbors.size());
+
         for (size_t n = 0; n < kUpperBoundarySize; ++n) {
           neighbor_indices.push_back(-static_cast<int>(n + 1));
         }
       }
     }
 
-    // Add neighbor indices from row below this subregion
     if (i < num_subregions - 1) {
-      // Not last subregion: get topmost row of next subregion
       const int kNextSubregionFirstRowStart =
           (current_row + kRowsInSubregion) * width_;
       for (int col = 0; col < width_; ++col) {
         neighbor_indices.push_back(kNextSubregionFirstRowStart + col);
       }
     } else {
-      // Last subregion: needs lower boundary from parent
       if (kRegionSpansFullGrid && num_subregions > 1) {
-        // Region spans full grid: wrap to first row of first subregion
         for (int col = 0; col < width_; ++col) {
           neighbor_indices.push_back(col);
         }
       } else {
-        // Region doesn't span full grid: get parent's lower boundary
-        // Use negative indices to reference parent neighbors
         if (parent_neighbors.size() > static_cast<size_t>(width_)) {
           const size_t kStartIdx = parent_neighbors.size() - width_;
+
           for (size_t n = kStartIdx; n < parent_neighbors.size(); ++n) {
             neighbor_indices.push_back(-static_cast<int>(n + 1));
           }
         }
       }
     }
-
-    std::cout << "  Subregion " << i << ": rows " << current_row << " to "
-              << (current_row + kRowsInSubregion - 1) << ", agents "
-              << kStartIndex << " to " << (kStartIndex + kAgentsInSubregion - 1)
-              << " (count: " << kAgentsInSubregion
-              << "), neighbor_indices: " << neighbor_indices.size() << "\n";
 
     subregions.emplace_back(std::move(indices), &region,
                             std::move(neighbor_indices));
@@ -285,6 +276,5 @@ const Cell& GameOfLifeSpace::GetCellAt(int x, int y) const {
 }
 
 int GameOfLifeSpace::CoordToIndex(int x, int y) const noexcept {
-  // Row-major order: y * width_ + x
   return y * width_ + x;
 }

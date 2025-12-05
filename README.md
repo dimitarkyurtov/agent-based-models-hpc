@@ -173,7 +173,7 @@ cmake -B build -DCMAKE_EXPORT_COMPILE_COMMANDS=ON
 cmake -B build -DCUDA=ON -DCMAKE_EXPORT_COMPILE_COMMANDS=ON
 
 # Run clang-tidy on C++ library sources
-find lib \( -name '*.cpp' -o -name \) | xargs clang-tidy -p build
+find lib \( -name '*.cpp' \) | xargs clang-tidy -p build
 
 # Run clang-tidy on all C++ sources (excludes external dependencies like imgui)
 find lib example \( -name '*.cpp' \) ! -path '*/external/*' ! -path '*/imgui*' | xargs clang-tidy -p build

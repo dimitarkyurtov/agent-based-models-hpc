@@ -132,7 +132,9 @@ void MPIWorker<AgentT>::ReceiveNeighbors() {
 
   // Update the existing LocalRegion with neighbors
   if (local_region_) {
+    ParallelABM::Logger::GetInstance().Info("MPIWorker: local_region_->GetNeighbors().size(): " + std::to_string(local_region_->GetNeighbors().size()));
     local_region_->SetNeighbors(std::move(neighbors));
+    ParallelABM::Logger::GetInstance().Info("MPIWorker: local_region_->GetNeighbors().size(): " + std::to_string(local_region_->GetNeighbors().size()));
   } else {
     ParallelABM::Logger::GetInstance().Warning(
         "MPIWorker: Received neighbors but local region is null");

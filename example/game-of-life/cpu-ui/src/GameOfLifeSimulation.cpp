@@ -19,7 +19,6 @@ void GameOfLifeSimulation::OnTimeStepCompleted(unsigned int timestep) {
   MPI_Comm_rank(MPI_COMM_WORLD, &rank);
 
   if (rank == 0) {
-    // Access the space from the base class to render the current state
     auto* game_space = dynamic_cast<GameOfLifeSpace*>(space_.get());
     if (game_space != nullptr) {
       renderer_.Render(*game_space, timestep);

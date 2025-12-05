@@ -60,15 +60,15 @@ int Logger::GetRank() const { return mpiRank_; }
 std::string Logger::LogLevelToString(LogLevel level) {
   switch (level) {
     case LogLevel::kDebug:
-      return "DEBUG  ";
+      return "DEBUG";
     case LogLevel::kInfo:
-      return "INFO   ";
+      return "INFO";
     case LogLevel::kWarning:
       return "WARNING";
     case LogLevel::kError:
-      return "ERROR  ";
+      return "ERROR";
     case LogLevel::kFatal:
-      return "FATAL  ";
+      return "FATAL";
     default:
       return "UNKNOWN";
   }

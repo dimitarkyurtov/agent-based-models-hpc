@@ -70,14 +70,11 @@ class Space {
      * @brief Constructs a region with specified ID and agent indices.
      * @param region_id The unique identifier for this region
      * @param agent_indices The indices of agents that belong to this region
-     * @param neighbor_agents Agents from other regions that interact with this
-     * region's agents
      */
-    Region(int region_id, std::vector<int> agent_indices,
-           std::vector<AgentT> neighbor_agents)
+    Region(int region_id, std::vector<int> agent_indices)
         : indices_(std::move(agent_indices)),
           region_id_(region_id),
-          neighbors_(std::move(neighbor_agents)) {}
+          neighbors_() {}
 
     /**
      * @brief Copy constructor.
@@ -124,6 +121,18 @@ class Space {
      */
     [[nodiscard]] const std::vector<AgentT>& GetNeighbors() const {
       return neighbors_;
+    }
+
+    /**
+     * @brief Updates the neighbor agents with new values.
+     * @param new_neighbors Vector of updated neighbor agents
+     *
+     * This method allows the Space implementation to refresh neighbor data
+     * dynamically, ensuring that neighbor information reflects the current
+     * simulation state rather than stale data from region creation.
+     */
+    void SetNeighbors(std::vector<AgentT> new_neighbors) {
+      neighbors_ = std::move(new_neighbors);
     }
   };
 
@@ -249,6 +258,30 @@ class Space {
    */
   virtual std::vector<ParallelABM::LocalSubRegion<AgentT>> SplitLocalRegion(
       ParallelABM::LocalRegion<AgentT>& region, int num_subregions) const = 0;
+
+  /**
+   * @brief Retrieves current neighbor agents for a specific region.
+   *
+   * This method calculates and returns the neighbor agents for the specified
+   * region based on the current state of the simulation. Unlike the neighbors
+   * stored in Region during SplitIntoRegions, this method provides fresh
+   * neighbor data that reflects the current agent states.
+   *
+   * @param region Reference to the region whose neighbors should be retrieved
+   * @return Vector of neighbor agents with current state
+   *
+   * @details
+   * The implementation should:
+   * 1. Identify which agents from other regions interact with the target region
+   * 2. Collect current agent data for those neighbors from the agents vector
+   * 3. Return a new vector containing copies of those neighbor agents
+   *
+   * This method is called each timestep by the MPICoordinator to ensure
+   * that distributed computations have access to up-to-date neighbor
+   * information for accurate simulation results.
+   */
+  [[nodiscard]] virtual std::vector<AgentT> GetRegionNeighbours(
+      const Region& region) const = 0;
 
   /**
    * @brief Provides access to the agents vector for derived classes and the

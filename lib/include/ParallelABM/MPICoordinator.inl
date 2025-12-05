@@ -135,12 +135,19 @@ void MPICoordinator<AgentT>::ReceiveLocalRegionsFromWorkers() {
 
 template <typename AgentT>
 void MPICoordinator<AgentT>::SendNeighborsToWorkers() {
-  // Send neighbor agents to each worker using their pre-computed regions
+  // Update neighbor data for each region based on current simulation state
+  // and send to workers
   for (int worker_rank = 1; worker_rank < num_processes_; ++worker_rank) {
-    const typename Space<AgentT>::Region& region = regions_[worker_rank];
-    const std::vector<AgentT>& neighbor_agents = region.GetNeighbors();
+    typename Space<AgentT>::Region& region = regions_[worker_rank];
 
-    const int kNumNeighbors = static_cast<int>(neighbor_agents.size());
+    // Retrieve fresh neighbor data from space based on current agent states
+    std::vector<AgentT> updated_neighbors =
+        space_->GetRegionNeighbours(region);
+
+    // Update the region's stored neighbors with current data
+    region.SetNeighbors(updated_neighbors);
+
+    const int kNumNeighbors = static_cast<int>(updated_neighbors.size());
     MPI_Send(&kNumNeighbors, 1, MPI_INT, worker_rank, 0, MPI_COMM_WORLD);
     ParallelABM::Logger::GetInstance().Info(
         "MPICoordinator: Sent neighbor count (" +
@@ -149,7 +156,7 @@ void MPICoordinator<AgentT>::SendNeighborsToWorkers() {
 
     if (kNumNeighbors > 0) {
       // Send neighbors as contiguous array (zero-copy)
-      MPI_Send(neighbor_agents.data(),
+      MPI_Send(updated_neighbors.data(),
                static_cast<int>(kNumNeighbors * sizeof(AgentT)), MPI_BYTE,
                worker_rank, 0, MPI_COMM_WORLD);
       ParallelABM::Logger::GetInstance().Info(
@@ -158,17 +165,19 @@ void MPICoordinator<AgentT>::SendNeighborsToWorkers() {
     }
   }
 
-  // Set coordinator's own neighbors from region 0
-  const std::vector<AgentT>& coordinator_neighbors_src =
-      regions_[0].GetNeighbors();
+  // Update and set coordinator's own neighbors from region 0
+  typename Space<AgentT>::Region& coordinator_region = regions_[0];
+  std::vector<AgentT> coordinator_neighbors =
+      space_->GetRegionNeighbours(coordinator_region);
 
-  // Make a copy of neighbors for the coordinator
-  std::vector<AgentT> coordinator_neighbors = coordinator_neighbors_src;
+  // Update the coordinator's region with fresh neighbors
+  coordinator_region.SetNeighbors(coordinator_neighbors);
 
   this->local_region_->SetNeighbors(std::move(coordinator_neighbors));
   ParallelABM::Logger::GetInstance().Debug(
       "MPICoordinator: Set own neighbors (" +
-      std::to_string(coordinator_neighbors_src.size()) + " agents)");
+      std::to_string(this->local_region_->GetNeighbors().size()) +
+      " agents)");
 }
 
 #endif  // PARALLELABM_MPICOORDINATOR_INL

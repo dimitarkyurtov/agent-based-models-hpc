@@ -106,20 +106,15 @@ void Simulation<AgentT, ModelType>::Start(unsigned int timesteps) {
 
   if (coordinator != nullptr) {
     coordinator->SendLocalRegionsToWorkers();
+    coordinator->SendNeighborsToWorkers();
   } else {
     mpi_worker_->ReceiveLocalRegion();
+    mpi_worker_->ReceiveNeighbors();
   }
 
-  // Perform one-time setup before the simulation loop
   Setup();
 
   for (unsigned int step = 0; step < timesteps; ++step) {
-    if (coordinator != nullptr) {
-      coordinator->SendNeighborsToWorkers();
-    } else {
-      mpi_worker_->ReceiveNeighbors();
-    }
-
     ParallelABM::LocalRegion<AgentT>*
         local_region =  // NOLINT(cppcoreguidelines-init-variables)
         mpi_worker_->GetLocalRegion();
@@ -127,8 +122,10 @@ void Simulation<AgentT, ModelType>::Start(unsigned int timesteps) {
 
     if (coordinator != nullptr) {
       coordinator->ReceiveLocalRegionsFromWorkers();
+      coordinator->SendNeighborsToWorkers();
     } else {
       mpi_worker_->SendLocalRegionToLeader();
+      mpi_worker_->ReceiveNeighbors();
     }
 
     OnTimeStepCompleted(step);

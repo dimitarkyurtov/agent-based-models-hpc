@@ -88,6 +88,19 @@ class GameOfLifeSpace : public Space<Cell> {
       int num_subregions) const override;
 
   /**
+   * @brief Retrieves current neighbor agents for the specified region.
+   *
+   * Calculates and returns the boundary cells that neighbor the given region,
+   * based on the current state of the grid. For a toroidal grid, this includes
+   * the row above and the row below the region's boundary, with wrap-around.
+   *
+   * @param region Reference to the region whose neighbors are needed
+   * @return Vector of neighbor cells with current state
+   */
+  [[nodiscard]] std::vector<Cell> GetRegionNeighbours(
+      const Region& region) const override;
+
+  /**
    * @brief Get the grid width.
    * @return Number of columns in the grid
    */

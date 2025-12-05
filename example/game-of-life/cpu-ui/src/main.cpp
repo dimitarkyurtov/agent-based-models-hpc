@@ -33,7 +33,7 @@ constexpr double kDensity = 0.3;
 constexpr int kTimesteps = 1'000;
 
 /// Frame delay in milliseconds
-constexpr int kFrameDelayMs = 100;
+constexpr int kFrameDelayMs = 40;
 
 /// Window width
 constexpr int kWindowWidth = 1280;

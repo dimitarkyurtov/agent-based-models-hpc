@@ -1,5 +1,7 @@
 #include "GameOfLifeModel.h"
 
+#include <ParallelABM/Logger.h>
+
 #include <iostream>
 #include <unordered_map>
 
@@ -19,18 +21,11 @@ void GameOfLifeModel::ComputeInteractions(
   }
 
   for (const Cell& neighbor_cell : neighbors) {
-    // if (agents[0].get().x != 0 || agents[0].get().y != 0) {
-    //       std::cout << "Neighbor cell at (" << neighbor_cell.x << ", "
-    //           << neighbor_cell.y << "), alive: " << neighbor_cell.alive <<
-    //           "\n";
-    // }
     const int kKey = neighbor_cell.y * width_ + neighbor_cell.x;
     cell_map[kKey] = &neighbor_cell;
   }
 
-  // First pass: compute next_alive for all cells
   for (Cell& cell : agents) {
-    // Count alive neighbors (8-connected)
     int alive_neighbors = 0;
 
     for (int dy = -1; dy <= 1; ++dy) {
@@ -39,17 +34,12 @@ void GameOfLifeModel::ComputeInteractions(
           continue;  // Skip self
         }
 
-        // Calculate neighbor coordinates with wrapping (toroidal grid)
         const int kNx = (cell.x + dx + width_) % width_;
         const int kNy = (cell.y + dy + height_) % height_;
         const int kKey = kNy * width_ + kNx;
 
         // O(1) lookup in hash map
         auto it = cell_map.find(kKey);
-        if (it == cell_map.end()) {
-          std::cerr << "Warning: Neighbor cell not found at (" << kNx << ", "
-                    << kNy << ")\n";
-        }
         if (it != cell_map.end() && it->second->alive) {
           ++alive_neighbors;
         }
