@@ -49,11 +49,13 @@ constexpr int kDefaultThreads = 1;
  * @param program_name Name of the executable
  */
 void PrintUsage(const char* program_name) {
-  std::cerr << "Usage: " << program_name << " [num_threads]\n"
+  std::cerr << "Usage: " << program_name << " [num_threads] [init_mode]\n"
             << "\n"
             << "Arguments:\n"
             << "  num_threads - Number of threads to use (default: "
-            << kDefaultThreads << ")\n";
+            << kDefaultThreads << ")\n"
+            << "  init_mode   - Initialization mode: 'random' or 'predefined' "
+               "(default: predefined)\n";
 }
 
 }  // namespace
@@ -71,8 +73,8 @@ void PrintUsage(const char* program_name) {
  */
 int main(int argc, char* argv[]) {
   try {
-    // Parse command line arguments for number of threads
     int num_threads = kDefaultThreads;
+    InitializationMode init_mode = InitializationMode::kPredefined;
 
     if (argc > 1) {
       if (std::string(argv[1]) == "-h" || std::string(argv[1]) == "--help") {
@@ -82,36 +84,44 @@ int main(int argc, char* argv[]) {
       num_threads = std::atoi(argv[1]);
     }
 
-    // Validate number of threads
+    if (argc > 2) {
+      const std::string mode_str = argv[2];
+      if (mode_str == "random") {
+        init_mode = InitializationMode::kRandom;
+      } else if (mode_str == "predefined") {
+        init_mode = InitializationMode::kPredefined;
+      } else {
+        std::cerr << "Error: Invalid initialization mode '" << mode_str
+                  << "'. Must be 'random' or 'predefined'.\n";
+        PrintUsage(argv[0]);
+        return 1;
+      }
+    }
+
     if (num_threads <= 0) {
       std::cerr << "Error: Number of threads must be positive.\n";
       PrintUsage(argv[0]);
       return 1;
     }
 
-    // Create renderer and initialize rendering system
     Renderer renderer(kWidth, kHeight, kWindowWidth, kWindowHeight);
     if (!renderer.Setup()) {
       std::cerr << "Error: Failed to setup renderer.\n";
       return 1;
     }
 
-    // Create local CPU environment with specified number of threads
     ParallelABM::LocalEnvironmentCPU environment(num_threads);
 
-    // Create space and initialize with deterministic patterns
-    auto space = std::make_unique<GameOfLifeSpace>(kWidth, kHeight, kDensity);
+    auto space =
+        std::make_unique<GameOfLifeSpace>(kWidth, kHeight, kDensity, init_mode);
     space->Initialize();
 
-    // Create the Game of Life model
     auto model = std::make_shared<GameOfLifeModel>(kWidth, kHeight);
 
-    // Create simulation with rendering callback
     GameOfLifeSimulation simulation(argc, argv, std::move(space), model,
                                     environment, renderer,
                                     std::chrono::milliseconds(kFrameDelayMs));
 
-    // Run the simulation for the specified number of timesteps
     simulation.Start(kTimesteps);
 
     return 0;

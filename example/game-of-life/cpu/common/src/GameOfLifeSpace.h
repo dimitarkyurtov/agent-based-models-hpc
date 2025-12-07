@@ -9,6 +9,15 @@
 #include "Cell.h"
 
 /**
+ * @enum InitializationMode
+ * @brief Specifies how the grid should be initialized.
+ */
+enum class InitializationMode {
+  kRandom,     ///< Random initialization based on density
+  kPredefined  ///< Predefined patterns (gliders, oscillators, etc.)
+};
+
+/**
  * @class GameOfLifeSpace
  * @brief 2D grid space implementation for Conway's Game of Life.
  *
@@ -23,8 +32,10 @@ class GameOfLifeSpace : public Space<Cell> {
    * @param width Number of columns in the grid
    * @param height Number of rows in the grid
    * @param density Initial density of alive cells (0.0 to 1.0)
+   * @param mode Initialization mode (random or predefined patterns)
    */
-  GameOfLifeSpace(int width, int height, double density = 0.3);
+  GameOfLifeSpace(int width, int height, double density = 0.3,
+                  InitializationMode mode = InitializationMode::kPredefined);
 
   /**
    * @brief Copy constructor.
@@ -52,11 +63,13 @@ class GameOfLifeSpace : public Space<Cell> {
   ~GameOfLifeSpace() override = default;
 
   /**
-   * @brief Populate the grid with cells having random initial states.
+   * @brief Populate the grid with cells.
    *
    * Creates width * height cells arranged in a 2D grid with positions
    * assigned in row-major order. Each cell's initial alive state is
-   * determined randomly based on the configured density.
+   * determined either randomly based on the configured density or using
+   * predefined patterns, depending on the initialization mode set in
+   * constructor.
    */
   void Initialize() override;
 
@@ -129,9 +142,10 @@ class GameOfLifeSpace : public Space<Cell> {
   [[nodiscard]] const Cell& GetCellAt(int x, int y) const;
 
  private:
-  int width_;         ///< Grid width (number of columns)
-  int height_;        ///< Grid height (number of rows)
-  double density_;    ///< Initial alive cell density
+  int width_;                     ///< Grid width (number of columns)
+  int height_;                    ///< Grid height (number of rows)
+  double density_;                ///< Initial alive cell density
+  InitializationMode init_mode_;  ///< Initialization mode
   std::mt19937 rng_;  ///< Random number generator for initialization
 
   /**

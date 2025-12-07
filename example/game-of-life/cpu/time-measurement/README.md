@@ -24,17 +24,30 @@ make
 Run the application with MPI processes and threads:
 
 ```bash
-mpirun -n <num_processes> ./bin/game_of_life_cpu_time <num_threads>
+mpirun -n <num_processes> ./bin/game_of_life_cpu_time <num_threads> [init_mode]
 ```
 
-Example usage:
+### Arguments
+
+- `num_threads` - Number of CPU threads per MPI process (default: 1)
+- `init_mode` - Grid initialization mode (default: predefined)
+  - `random` - Random cell initialization based on density (30%)
+  - `predefined` - Deterministic patterns (gliders, oscillators, etc.) for reproducible benchmarks
+
+### Example Usage
 
 ```bash
-# Single process, 4 threads
+# Single process, 4 threads, predefined patterns
 mpirun -n 1 ./bin/game_of_life_cpu_time 4
 
-# 4 MPI processes, 2 threads each
+# 4 MPI processes, 2 threads each, predefined patterns
 mpirun -n 4 ./bin/game_of_life_cpu_time 2
+
+# Single process, 4 threads, random initialization
+mpirun -n 1 ./bin/game_of_life_cpu_time 4 random
+
+# 2 MPI processes, 8 threads each, predefined patterns (explicit)
+mpirun -n 2 ./bin/game_of_life_cpu_time 8 predefined
 ```
 
 ## Output

@@ -6,94 +6,95 @@
 #include <algorithm>
 #include <iostream>
 
-GameOfLifeSpace::GameOfLifeSpace(int width, int height, double density)
+GameOfLifeSpace::GameOfLifeSpace(int width, int height, double density,
+                                 InitializationMode mode)
     : width_(width),
       height_(height),
       density_(density),
+      init_mode_(mode),
       rng_(std::random_device{}()) {}
 
 void GameOfLifeSpace::Initialize() {
   agents.clear();
   agents.reserve(static_cast<size_t>(width_ * height_));
 
-  // Deterministic patterns for reproducible testing across multiple threads
-  // Creates various oscillators and gliders in different locations
-  // for (int x = 0; x < width_; ++x) {
-  for (int y = 0; y < height_; ++y) {
-    for (int x = 0; x < width_; ++x) {
-      bool alive = false;
-
-      // Glider pattern (top-left corner)
-      if ((x == 1 && y == 0) || (x == 2 && y == 1) || (x == 0 && y == 2) ||
-          (x == 1 && y == 2) || (x == 2 && y == 2)) {
-        alive = true;
+  if (init_mode_ == InitializationMode::kRandom) {
+    // Random initialization based on density
+    std::uniform_real_distribution<double> dist(0.0, 1.0);
+    for (int y = 0; y < height_; ++y) {
+      for (int x = 0; x < width_; ++x) {
+        const bool kAlive = dist(rng_) < density_;
+        agents.push_back(Cell(x, y, kAlive));
       }
+    }
+  } else {
+    // Deterministic patterns for reproducible testing
+    for (int y = 0; y < height_; ++y) {
+      for (int x = 0; x < width_; ++x) {
+        bool alive = false;
 
-      // Blinker pattern (center)
-      const int kCenterX = width_ / 2;
-      const int kCenterY = height_ / 2;
-      if (y == kCenterY &&
-          (x == kCenterX - 1 || x == kCenterX || x == kCenterX + 1)) {
-        alive = true;
+        // Glider pattern (top-left corner)
+        if ((x == 1 && y == 0) || (x == 2 && y == 1) || (x == 0 && y == 2) ||
+            (x == 1 && y == 2) || (x == 2 && y == 2)) {
+          alive = true;
+        }
+
+        // Blinker pattern (center)
+        const int kCenterX = width_ / 2;
+        const int kCenterY = height_ / 2;
+        if (y == kCenterY &&
+            (x == kCenterX - 1 || x == kCenterX || x == kCenterX + 1)) {
+          alive = true;
+        }
+
+        // Toad pattern (upper-right area)
+        const int kToadX = width_ - 10;
+        const int kToadY = 5;
+        if ((y == kToadY &&
+             (x == kToadX + 1 || x == kToadX + 2 || x == kToadX + 3)) ||
+            (y == kToadY + 1 &&
+             (x == kToadX || x == kToadX + 1 || x == kToadX + 2))) {
+          alive = true;
+        }
+
+        // Beacon pattern (lower-left area)
+        const int kBeaconX = 5;
+        const int kBeaconY = height_ - 10;
+        if ((x == kBeaconX && y == kBeaconY) ||
+            (x == kBeaconX + 1 && y == kBeaconY) ||
+            (x == kBeaconX && y == kBeaconY + 1) ||
+            (x == kBeaconX + 3 && y == kBeaconY + 2) ||
+            (x == kBeaconX + 2 && y == kBeaconY + 3) ||
+            (x == kBeaconX + 3 && y == kBeaconY + 3)) {
+          alive = true;
+        }
+
+        // Second glider (lower-right area, moving opposite direction)
+        const int kGlider2X = width_ - 8;
+        const int kGlider2Y = height_ - 8;
+        if ((x == kGlider2X && y == kGlider2Y) ||
+            (x == kGlider2X + 1 && y == kGlider2Y + 1) ||
+            (x == kGlider2X + 2 && y == kGlider2Y - 1) ||
+            (x == kGlider2X + 2 && y == kGlider2Y) ||
+            (x == kGlider2X + 2 && y == kGlider2Y + 1)) {
+          alive = true;
+        }
+
+        // Pulsar pattern (offset from center-left)
+        const int kPulsarX = width_ / 4;
+        const int kPulsarY = height_ / 2;
+        if ((x == kPulsarX && (y == kPulsarY - 2 || y == kPulsarY + 2)) ||
+            (x == kPulsarX + 2 &&
+             (y == kPulsarY || y == kPulsarY - 2 || y == kPulsarY + 2)) ||
+            (x == kPulsarX - 2 &&
+             (y == kPulsarY || y == kPulsarY - 2 || y == kPulsarY + 2))) {
+          alive = true;
+        }
+
+        agents.push_back(Cell(x, y, alive));
       }
-
-      // Toad pattern (upper-right area)
-      const int kToadX = width_ - 10;
-      const int kToadY = 5;
-      if ((y == kToadY &&
-           (x == kToadX + 1 || x == kToadX + 2 || x == kToadX + 3)) ||
-          (y == kToadY + 1 &&
-           (x == kToadX || x == kToadX + 1 || x == kToadX + 2))) {
-        alive = true;
-      }
-
-      // Beacon pattern (lower-left area)
-      const int kBeaconX = 5;
-      const int kBeaconY = height_ - 10;
-      if ((x == kBeaconX && y == kBeaconY) ||
-          (x == kBeaconX + 1 && y == kBeaconY) ||
-          (x == kBeaconX && y == kBeaconY + 1) ||
-          (x == kBeaconX + 3 && y == kBeaconY + 2) ||
-          (x == kBeaconX + 2 && y == kBeaconY + 3) ||
-          (x == kBeaconX + 3 && y == kBeaconY + 3)) {
-        alive = true;
-      }
-
-      // Second glider (lower-right area, moving opposite direction)
-      const int kGlider2X = width_ - 8;
-      const int kGlider2Y = height_ - 8;
-      if ((x == kGlider2X && y == kGlider2Y) ||
-          (x == kGlider2X + 1 && y == kGlider2Y + 1) ||
-          (x == kGlider2X + 2 && y == kGlider2Y - 1) ||
-          (x == kGlider2X + 2 && y == kGlider2Y) ||
-          (x == kGlider2X + 2 && y == kGlider2Y + 1)) {
-        alive = true;
-      }
-
-      // Pulsar pattern (offset from center-left)
-      const int kPulsarX = width_ / 4;
-      const int kPulsarY = height_ / 2;
-      // Simplified pulsar (just a few key cells for visual interest)
-      if ((x == kPulsarX && (y == kPulsarY - 2 || y == kPulsarY + 2)) ||
-          (x == kPulsarX + 2 &&
-           (y == kPulsarY || y == kPulsarY - 2 || y == kPulsarY + 2)) ||
-          (x == kPulsarX - 2 &&
-           (y == kPulsarY || y == kPulsarY - 2 || y == kPulsarY + 2))) {
-        alive = true;
-      }
-
-      agents.push_back(Cell(x, y, alive));
     }
   }
-
-  // Random initialization (commented out for deterministic testing)
-  // std::uniform_real_distribution<double> dist(0.0, 1.0);
-  // for (int y = 0; y < height_; ++y) {
-  //   for (int x = 0; x < width_; ++x) {
-  //     const bool kAlive = dist(rng_) < density_;
-  //     agents.push_back(Cell(x, y, kAlive));
-  //   }
-  // }
 }
 
 std::vector<Space<Cell>::Region> GameOfLifeSpace::SplitIntoRegions(
