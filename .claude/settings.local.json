@@ -15,7 +15,8 @@
       "Bash(for f in lib/src/MPIWorker.cpp lib/src/MPICoordinator.cpp lib/src/Logger.cpp lib/src/EnvironmentSlurm.cpp lib/src/LocalRegion.cpp lib/src/SimulationCPU.cpp example/main.cpp)",
       "Bash(do echo \"=== Checking $f ===\")",
       "Bash(cmake:*)",
-      "Bash(make:*)"
+      "Bash(make:*)",
+      "Bash(find:*)"
     ],
     "deny": [],
     "ask": []

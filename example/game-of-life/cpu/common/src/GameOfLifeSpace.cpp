@@ -304,8 +304,8 @@ void GameOfLifeSpace::Serialize(std::ostream& os, int step) const {
   // Convert hash to hex string
   std::ostringstream hash_hex;
   hash_hex << std::hex << std::setfill('0');
-  for (int i = 0; i < SHA256_DIGEST_LENGTH; ++i) {
-    hash_hex << std::setw(2) << static_cast<int>(hash[i]);
+  for (unsigned char i : hash) {
+    hash_hex << std::setw(2) << static_cast<int>(i);
   }
 
   // Write checkpoint data

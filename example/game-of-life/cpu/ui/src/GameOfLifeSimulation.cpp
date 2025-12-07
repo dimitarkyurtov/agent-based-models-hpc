@@ -43,7 +43,7 @@ void GameOfLifeSimulation::OnTimeStepCompleted(unsigned int timestep) {
 
         std::ofstream checkpoint_file(filename.str());
         if (checkpoint_file.is_open()) {
-          game_space->Serialize(checkpoint_file, timestep);
+          game_space->Serialize(checkpoint_file, static_cast<int>(timestep));
           checkpoint_file.close();
         }
       }

@@ -3,6 +3,7 @@
 
 #include <ParallelABM/Space.h>
 
+#include <cstdint>
 #include <random>
 #include <vector>
 
@@ -12,7 +13,7 @@
  * @enum InitializationMode
  * @brief Specifies how the grid should be initialized.
  */
-enum class InitializationMode {
+enum class InitializationMode : std::uint8_t {
   kRandom,     ///< Random initialization based on density
   kPredefined  ///< Predefined patterns (gliders, oscillators, etc.)
 };

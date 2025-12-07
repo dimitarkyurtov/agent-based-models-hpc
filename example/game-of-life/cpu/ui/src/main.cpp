@@ -85,13 +85,13 @@ int main(int argc, char* argv[]) {
     }
 
     if (argc > 2) {
-      const std::string mode_str = argv[2];
-      if (mode_str == "random") {
+      const std::string kModeStr = argv[2];
+      if (kModeStr == "random") {
         init_mode = InitializationMode::kRandom;
-      } else if (mode_str == "predefined") {
+      } else if (kModeStr == "predefined") {
         init_mode = InitializationMode::kPredefined;
       } else {
-        std::cerr << "Error: Invalid initialization mode '" << mode_str
+        std::cerr << "Error: Invalid initialization mode '" << kModeStr
                   << "'. Must be 'random' or 'predefined'.\n";
         PrintUsage(argv[0]);
         return 1;
