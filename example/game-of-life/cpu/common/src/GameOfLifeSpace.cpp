@@ -2,9 +2,12 @@
 
 #include <ParallelABM/LocalRegion.h>
 #include <ParallelABM/Logger.h>
+#include <openssl/sha.h>
 
 #include <algorithm>
+#include <iomanip>
 #include <iostream>
+#include <sstream>
 
 GameOfLifeSpace::GameOfLifeSpace(int width, int height, double density,
                                  InitializationMode mode)
@@ -278,4 +281,35 @@ const Cell& GameOfLifeSpace::GetCellAt(int x, int y) const {
 
 int GameOfLifeSpace::CoordToIndex(int x, int y) const noexcept {
   return y * width_ + x;
+}
+
+void GameOfLifeSpace::Serialize(std::ostream& os, int step) const {
+  // Build binary grid state (0 or 1 for each cell)
+  std::vector<unsigned char> grid_state;
+  grid_state.reserve(agents.size());
+
+  int alive_count = 0;
+  for (const auto& cell : agents) {
+    const unsigned char kCellState = cell.alive ? 1 : 0;
+    grid_state.push_back(kCellState);
+    if (kCellState == 1) {
+      ++alive_count;
+    }
+  }
+
+  // Compute SHA-256 hash
+  unsigned char hash[SHA256_DIGEST_LENGTH];
+  SHA256(grid_state.data(), grid_state.size(), hash);
+
+  // Convert hash to hex string
+  std::ostringstream hash_hex;
+  hash_hex << std::hex << std::setfill('0');
+  for (int i = 0; i < SHA256_DIGEST_LENGTH; ++i) {
+    hash_hex << std::setw(2) << static_cast<int>(hash[i]);
+  }
+
+  // Write checkpoint data
+  os << "STEP: " << step << "\n";
+  os << "CHECKSUM: " << hash_hex.str() << "\n";
+  os << "ALIVE_CELLS: " << alive_count << "\n";
 }

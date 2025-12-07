@@ -141,6 +141,19 @@ class GameOfLifeSpace : public Space<Cell> {
    */
   [[nodiscard]] const Cell& GetCellAt(int x, int y) const;
 
+  /**
+   * @brief Serialize the current grid state to an output stream.
+   *
+   * Outputs a text-based checkpoint containing:
+   * - STEP: The current simulation step number
+   * - CHECKSUM: SHA-256 hash of the binary grid state (0/1 for each cell)
+   * - ALIVE_CELLS: Total count of alive cells
+   *
+   * @param os Output stream to write the serialized data
+   * @param step Current simulation step number
+   */
+  void Serialize(std::ostream& os, int step) const;
+
  private:
   int width_;                     ///< Grid width (number of columns)
   int height_;                    ///< Grid height (number of rows)
