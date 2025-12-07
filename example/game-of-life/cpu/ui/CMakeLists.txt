@@ -1,6 +1,6 @@
 # Game of Life CPU example with ImGui UI
 #
-# This example demonstrates the ParallelABM library usage with Conway's
+# Demonstrates the ParallelABM library usage with Conway's
 # Game of Life simulation rendered using ImGui and OpenGL.
 
 cmake_minimum_required(VERSION 3.14)
@@ -10,10 +10,10 @@ find_package(OpenGL REQUIRED)
 find_package(glfw3 REQUIRED)
 
 # Collect all source files from src directory
-file(GLOB GAMEOFLIFE_SOURCES "${CMAKE_CURRENT_SOURCE_DIR}/src/*.cpp")
+file(GLOB GAMEOFLIFE_UI_SOURCES "${CMAKE_CURRENT_SOURCE_DIR}/src/*.cpp")
 
 # Create executable
-add_executable(game_of_life_cpu_ui ${GAMEOFLIFE_SOURCES})
+add_executable(game_of_life_cpu_ui ${GAMEOFLIFE_UI_SOURCES})
 
 # Set C++20 standard
 target_compile_features(game_of_life_cpu_ui PRIVATE cxx_std_20)
@@ -32,7 +32,7 @@ target_include_directories(game_of_life_cpu_ui
 # Link against required libraries
 target_link_libraries(game_of_life_cpu_ui
   PRIVATE
-    ParallelABM
+    game_of_life_common
     OpenGL::GL
     glfw
     imgui
