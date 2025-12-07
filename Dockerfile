@@ -20,6 +20,8 @@ RUN apt-get update && apt-get install -y \
     clang-format \
     clang-tidy \
     libboost-all-dev \
+    libssl-dev \
+    openssl \
     python3 \
     python3-pip \
     ssh \
