@@ -288,13 +288,9 @@ void GameOfLifeSpace::Serialize(std::ostream& os, int step) const {
   std::vector<unsigned char> grid_state;
   grid_state.reserve(agents.size());
 
-  int alive_count = 0;
   for (const auto& cell : agents) {
     const unsigned char kCellState = cell.alive ? 1 : 0;
     grid_state.push_back(kCellState);
-    if (kCellState == 1) {
-      ++alive_count;
-    }
   }
 
   // Compute SHA-256 hash
@@ -308,8 +304,6 @@ void GameOfLifeSpace::Serialize(std::ostream& os, int step) const {
     hash_hex << std::setw(2) << static_cast<int>(i);
   }
 
-  // Write checkpoint data
-  os << "STEP: " << step << "\n";
-  os << "CHECKSUM: " << hash_hex.str() << "\n";
-  os << "ALIVE_CELLS: " << alive_count << "\n";
+  // Write step and hash on a single line
+  os << step << " " << hash_hex.str() << "\n";
 }

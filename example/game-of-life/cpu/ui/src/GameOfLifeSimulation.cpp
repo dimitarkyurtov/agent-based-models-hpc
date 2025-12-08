@@ -12,16 +12,21 @@ GameOfLifeSimulation::GameOfLifeSimulation(
     int& argc, char**& argv, std::unique_ptr<Space<Cell>> space,
     std::shared_ptr<ModelCPU<Cell>> model,
     ParallelABM::Environment& environment, Renderer& renderer,
-    std::chrono::milliseconds frame_delay, const std::string& checkpoint_dir)
+    std::chrono::milliseconds frame_delay,
+    const std::string& checkpoint_file_path)
     : SimulationCPU<Cell>(argc, argv, std::move(space), model, environment),
       renderer_(renderer),
       frame_delay_(frame_delay),
-      checkpoint_dir_(checkpoint_dir) {
-  // Create checkpoint directory if it doesn't exist
+      checkpoint_file_path_(checkpoint_file_path) {
+  // Create parent directory and open checkpoint file
   int rank = 0;
   MPI_Comm_rank(MPI_COMM_WORLD, &rank);
   if (rank == 0) {
-    std::filesystem::create_directories(checkpoint_dir_);
+    std::filesystem::path file_path(checkpoint_file_path_);
+    if (file_path.has_parent_path()) {
+      std::filesystem::create_directories(file_path.parent_path());
+    }
+    checkpoint_file_.open(checkpoint_file_path_);
   }
 }
 
@@ -35,17 +40,10 @@ void GameOfLifeSimulation::OnTimeStepCompleted(unsigned int timestep) {
     if (game_space != nullptr) {
       renderer_.Render(*game_space, timestep);
 
-      // Serialize every kCheckpointInterval steps
-      if (timestep % kCheckpointInterval == 0) {
-        std::ostringstream filename;
-        filename << checkpoint_dir_ << "/state_" << std::setw(6)
-                 << std::setfill('0') << timestep << ".dat";
-
-        std::ofstream checkpoint_file(filename.str());
-        if (checkpoint_file.is_open()) {
-          game_space->Serialize(checkpoint_file, static_cast<int>(timestep));
-          checkpoint_file.close();
-        }
+      // Serialize every kCheckpointInterval steps to the single checkpoint file
+      if (timestep % kCheckpointInterval == 0 && checkpoint_file_.is_open()) {
+        game_space->Serialize(checkpoint_file_, static_cast<int>(timestep));
+        checkpoint_file_.flush();
       }
     }
 

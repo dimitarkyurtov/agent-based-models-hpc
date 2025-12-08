@@ -4,6 +4,7 @@
 #include <ParallelABM/SimulationCPU.h>
 
 #include <chrono>
+#include <fstream>
 #include <string>
 
 #include "Cell.h"
@@ -28,7 +29,7 @@ class GameOfLifeSimulation : public ParallelABM::SimulationCPU<Cell> {
    * @param environment Compute environment configuration
    * @param renderer Renderer for visualization
    * @param frame_delay Delay between frames in milliseconds
-   * @param checkpoint_dir Directory path for checkpoint files
+   * @param checkpoint_file_path Path to the checkpoint file
    */
   GameOfLifeSimulation(int& argc, char**& argv,
                        std::unique_ptr<Space<Cell>> space,
@@ -36,7 +37,8 @@ class GameOfLifeSimulation : public ParallelABM::SimulationCPU<Cell> {
                        ParallelABM::Environment& environment,
                        Renderer& renderer,
                        std::chrono::milliseconds frame_delay,
-                       const std::string& checkpoint_dir = "checkpoints/cpu");
+                       const std::string& checkpoint_file_path =
+                           "checkpoints/cpu/checkpoints.dat");
 
   /**
    * @brief Called after each timestep to render the current state.
@@ -52,7 +54,8 @@ class GameOfLifeSimulation : public ParallelABM::SimulationCPU<Cell> {
  private:
   Renderer& renderer_;                     ///< Reference to the renderer
   std::chrono::milliseconds frame_delay_;  ///< Delay between frames
-  std::string checkpoint_dir_;             ///< Directory for checkpoint files
+  std::string checkpoint_file_path_;       ///< Path to checkpoint file
+  std::ofstream checkpoint_file_;  ///< Single checkpoint file for all steps
   static constexpr int kCheckpointInterval = 50;  ///< Serialize every 50 steps
 };
 
