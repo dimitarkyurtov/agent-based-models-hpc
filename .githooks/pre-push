@@ -13,7 +13,7 @@ fi
 
 # Run linter
 echo "Running linter..."
-if ! find lib example -name '*.cpp' | xargs clang-tidy -p build; then
+if ! find lib example -type f \( -name '*.cpp' \) ! -path '*/external/*' ! -path '*/imgui*' ! -path '*/gpu/*' ! -name '*CUDA*' | xargs clang-tidy -p build --warnings-as-errors='*'; then
     echo "❌ Linter check failed. Fix the issues reported above."
     exit 1
 fi

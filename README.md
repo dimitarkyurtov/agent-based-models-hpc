@@ -172,14 +172,8 @@ cmake -B build -DCMAKE_EXPORT_COMPILE_COMMANDS=ON
 # Configure with compile commands (C++ and CUDA)
 cmake -B build -DCUDA=ON -DCMAKE_EXPORT_COMPILE_COMMANDS=ON
 
-# Run clang-tidy on C++ library sources
-find lib \( -name '*.cpp' \) | xargs clang-tidy -p build
-
 # Run clang-tidy on all C++ sources (excludes external dependencies like imgui)
-find lib example \( -name '*.cpp' \) ! -path '*/external/*' ! -path '*/imgui*' | xargs clang-tidy -p build
-
-# Run clang-tidy on CUDA sources (requires CUDA=ON during configure)
-find lib example -name '*.cu' ! -path '*/external/*' | xargs clang-tidy -p build
+find lib example -type f \( -name '*.cpp' \) ! -path '*/external/*' ! -path '*/imgui*' ! -path '*/gpu/*' ! -name '*CUDA*' | xargs clang-tidy -p build
 ```
 
 ## Git Hooks
