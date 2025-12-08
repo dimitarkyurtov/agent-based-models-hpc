@@ -89,6 +89,21 @@ class ModelCUDA : public Model {
   using InteractionRuleCUDA = void (*)(AgentType*, int, AgentType*, int);
 
   /**
+   * @brief Function pointer type for CUDA post-processing kernels.
+   *
+   * This defines the signature of an optional post-processing kernel that
+   * runs after the interaction rule kernel. Used for operations that must
+   * occur after all agents have computed their updates (e.g., applying
+   * buffered state changes to ensure synchronous updates).
+   *
+   * Signature:
+   * - Parameter 1: Pointer to device memory containing local agent array
+   * - Parameter 2: Number of local agents in the array
+   * - Return: void (modifies agents in place in device memory)
+   */
+  using PostProcessKernelCUDA = void (*)(AgentType*, int);
+
+  /**
    * @brief Default constructor.
    */
   ModelCUDA() = default;
@@ -128,6 +143,24 @@ class ModelCUDA : public Model {
    * @return Function pointer to the CUDA __global__ kernel
    */
   [[nodiscard]] virtual InteractionRuleCUDA GetInteractionKernel() const = 0;
+
+  /**
+   * @brief Get the optional CUDA post-processing kernel.
+   *
+   * This virtual method can be overridden by derived classes to provide
+   * a post-processing kernel that runs after the interaction kernel.
+   * The default implementation returns nullptr (no post-processing).
+   *
+   * Use cases include:
+   * - Applying buffered state updates for synchronous semantics
+   * - Normalizing computed values
+   * - Final cleanup operations
+   *
+   * @return Function pointer to the post-processing kernel, or nullptr
+   */
+  [[nodiscard]] virtual PostProcessKernelCUDA GetPostProcessKernel() const {
+    return nullptr;
+  }
 };
 
 #endif  // PARALLELABM_MODELCUDA_H

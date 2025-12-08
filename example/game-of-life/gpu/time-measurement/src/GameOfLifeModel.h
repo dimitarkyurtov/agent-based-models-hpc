@@ -31,6 +31,12 @@ class GameOfLifeModel : public ModelCUDA<Cell> {
    */
   [[nodiscard]] InteractionRuleCUDA GetInteractionKernel() const override;
 
+  /**
+   * @brief Get the post-processing kernel for applying computed states.
+   * @return Function pointer to the state application kernel
+   */
+  [[nodiscard]] PostProcessKernelCUDA GetPostProcessKernel() const override;
+
  private:
   int width_;   ///< Grid width
   int height_;  ///< Grid height

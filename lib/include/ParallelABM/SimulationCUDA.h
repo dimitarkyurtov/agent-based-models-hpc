@@ -98,12 +98,19 @@ class SimulationCUDA : public Simulation<AgentType, ModelCUDA<AgentType>> {
   SimulationCUDA& operator=(SimulationCUDA&&) = delete;
 
   /**
+   * @brief Initialize GPU contexts and precompute subregions.
+   *
+   * Splits the local region into subregions and prepares reusable data
+   * structures to avoid repeated allocation on each simulation step.
+   */
+  void Setup() override;
+
+  /**
    * @brief Execute model computation across available NVIDIA GPUs.
    *
-   * Splits the local region into subregions based on available GPUs from the
-   * environment. For each subregion, launches the model's interaction rule
-   * kernel on the corresponding GPU with maximum available thread blocks
-   * and threads.
+   * Uses precomputed subregions and contexts from Setup. For each subregion,
+   * launches the model's interaction rule kernel on the corresponding GPU
+   * with maximum available thread blocks and threads.
    *
    * @param local_region Pointer to the local region containing agents
    */
@@ -125,25 +132,32 @@ class SimulationCUDA : public Simulation<AgentType, ModelCUDA<AgentType>> {
     std::vector<int> indices{};
     cudaStream_t stream{};
   };
+
+  // Precomputed data structures to avoid reallocation each step
+  std::vector<ParallelABM::LocalSubRegion<AgentType>> subregions_{};
 };
+
+template <typename AgentType>
+void SimulationCUDA<AgentType>::Setup() {
+  const auto kNumGpus = this->environment.GetNumberOfGPUs();
+  LocalRegion<AgentType>* local_region = this->mpi_worker_->GetLocalRegion();
+
+  // Precompute subregions to avoid reallocation on each step
+  subregions_ =
+      this->space_->SplitLocalRegion(*local_region, static_cast<int>(kNumGpus));
+}
 
 template <typename AgentType>
 void SimulationCUDA<AgentType>::LaunchModel(
     ParallelABM::LocalRegion<AgentType>* local_region) {
-  const auto kNumGpus = this->environment.GetNumberOfGPUs();
-
-  // Split local region into subregions (one per GPU)
-  std::vector<ParallelABM::LocalSubRegion<AgentType>> subregions =
-      this->space_->SplitLocalRegion(*local_region, static_cast<int>(kNumGpus));
-
   std::vector<AgentType>& all_agents = local_region->GetAgents();
   const auto& neighbors = local_region->GetNeighbors();
   const int kNumNeighbors = static_cast<int>(neighbors.size());
 
   // Prepare GPU contexts and allocate memory for each device
   std::vector<GPUContext> contexts;
-  contexts.reserve(subregions.size());
-  std::vector<std::vector<AgentType>> host_agent_buffers(subregions.size());
+  contexts.reserve(subregions_.size());
+  std::vector<std::vector<AgentType>> host_agent_buffers(subregions_.size());
   std::vector<AgentType> host_neighbors;
 
   // Convert neighbors to AgentType
@@ -152,11 +166,11 @@ void SimulationCUDA<AgentType>::LaunchModel(
     host_neighbors.push_back(static_cast<const AgentType&>(neighbor));
   }
 
-  for (std::size_t i = 0; i < subregions.size(); ++i) {
+  for (std::size_t i = 0; i < subregions_.size(); ++i) {
     const int kDeviceId = static_cast<int>(i);
     CheckCudaError(cudaSetDevice(kDeviceId), "cudaSetDevice");
 
-    const auto& indices = subregions[i].GetIndices();
+    const auto& indices = subregions_[i].GetIndices();
     const int kNumAgents = static_cast<int>(indices.size());
 
     if (kNumAgents == 0) {
@@ -241,7 +255,15 @@ void SimulationCUDA<AgentType>::LaunchModel(
     kernel<<<kNumBlocks, kThreadsPerBlock, 0, ctx.stream>>>(
         ctx.d_agents, ctx.num_agents, ctx.d_neighbors, ctx.num_neighbors);
 
-    CheckCudaError(cudaGetLastError(), "kernel launch");
+    CheckCudaError(cudaGetLastError(), "interaction kernel launch");
+
+    // Launch the post-processing kernel if model provides one
+    auto post_kernel = this->model->GetPostProcessKernel();
+    if (post_kernel != nullptr) {
+      post_kernel<<<kNumBlocks, kThreadsPerBlock, 0, ctx.stream>>>(
+          ctx.d_agents, ctx.num_agents);
+      CheckCudaError(cudaGetLastError(), "post-process kernel launch");
+    }
   }
 
   // Copy results back from all devices asynchronously

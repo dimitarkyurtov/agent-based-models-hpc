@@ -103,7 +103,7 @@ int main(int argc, char* argv[]) {
 
     // Create environment with 0 CPU cores (GPU-only) and specified GPU count
     ParallelABM::LocalEnvironment environment(
-        0, static_cast<std::uint32_t>(num_devices));
+        1, static_cast<std::uint32_t>(num_devices));
 
     auto space =
         std::make_unique<GameOfLifeSpace>(kWidth, kHeight, kDensity, init_mode);

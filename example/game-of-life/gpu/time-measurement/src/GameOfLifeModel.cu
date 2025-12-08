@@ -7,17 +7,18 @@ __constant__ int d_grid_width;
 __constant__ int d_grid_height;
 
 /**
- * @brief CUDA kernel implementing Game of Life rules for cell updates.
+ * @brief CUDA kernel implementing Game of Life rules with O(1) neighbor lookup.
  *
- * Each thread processes one cell, counting alive neighbors using a
- * coordinate-based lookup in a combined agents+neighbors array.
- * Applies Conway's rules and updates both alive and next_alive states.
- * Uses constant memory for grid dimensions.
+ * Each thread processes one cell, counting alive neighbors using row-major
+ * indexing for constant-time access. The agents array is organized in
+ * row-major order (y * width + x), allowing direct calculation of neighbor
+ * positions. Boundary cells are stored in the neighbors array (upper and
+ * lower boundary rows).
  *
- * @param agents Device array of local cells to update
+ * @param agents Device array of local cells in row-major order
  * @param num_agents Number of local cells
- * @param neighbors Device array of neighbor cells (boundary/ghost cells)
- * @param num_neighbors Number of neighbor cells
+ * @param neighbors Device array of boundary cells (upper row + lower row)
+ * @param num_neighbors Number of boundary cells (typically 2 * width)
  */
 __global__ void GameOfLifeKernel(Cell* agents, int num_agents, Cell* neighbors,
                                  int num_neighbors) {
@@ -31,6 +32,14 @@ __global__ void GameOfLifeKernel(Cell* agents, int num_agents, Cell* neighbors,
   Cell& cell = agents[kIdx];
   int alive_neighbors = 0;
 
+  // Calculate current cell's position in row-major layout
+  // agents are stored as: row0_cells, row1_cells, ..., rowN_cells
+  const int kLocalRow = kIdx / d_grid_width;
+  const int kCol = kIdx % d_grid_width;
+
+  // Calculate total number of rows in this region
+  const int kNumRows = num_agents / d_grid_width;
+
   // Count alive neighbors in 3x3 neighborhood (excluding self)
   for (int dy = -1; dy <= 1; ++dy) {
     for (int dx = -1; dx <= 1; ++dx) {
@@ -38,32 +47,43 @@ __global__ void GameOfLifeKernel(Cell* agents, int num_agents, Cell* neighbors,
         continue;  // Skip self
       }
 
-      // Compute neighbor coordinates with toroidal wrapping
-      const int kNx = (cell.x + dx + d_grid_width) % d_grid_width;
-      const int kNy = (cell.y + dy + d_grid_height) % d_grid_height;
+      // Calculate neighbor column with toroidal wrapping
+      const int kNeighborCol = (kCol + dx + d_grid_width) % d_grid_width;
 
-      // Search in local agents first
-      bool found = false;
-      for (int i = 0; i < num_agents; ++i) {
-        if (agents[i].x == kNx && agents[i].y == kNy) {
-          if (agents[i].alive) {
-            ++alive_neighbors;
+      // Calculate neighbor row (local to this region)
+      const int kNeighborLocalRow = kLocalRow + dy;
+
+      bool neighbor_alive = false;
+
+      if (kNeighborLocalRow >= 0 && kNeighborLocalRow < kNumRows) {
+        // Neighbor is within this region's agents array
+        // Use row-major indexing for O(1) access
+        const int kNeighborIdx =
+            kNeighborLocalRow * d_grid_width + kNeighborCol;
+        neighbor_alive = agents[kNeighborIdx].alive;
+      } else {
+        // Neighbor is in the boundary (neighbors array)
+        // neighbors array structure: [upper_boundary_row | lower_boundary_row]
+        // upper_boundary_row is at neighbors[0..width-1]
+        // lower_boundary_row is at neighbors[width..2*width-1]
+
+        if (kNeighborLocalRow < 0) {
+          // Upper boundary (row above first row)
+          const int kNeighborIdx = kNeighborCol;
+          if (kNeighborIdx < num_neighbors) {
+            neighbor_alive = neighbors[kNeighborIdx].alive;
           }
-          found = true;
-          break;
+        } else {
+          // Lower boundary (row below last row)
+          const int kNeighborIdx = d_grid_width + kNeighborCol;
+          if (kNeighborIdx < num_neighbors) {
+            neighbor_alive = neighbors[kNeighborIdx].alive;
+          }
         }
       }
 
-      // If not found in local agents, search in neighbors array
-      if (!found) {
-        for (int i = 0; i < num_neighbors; ++i) {
-          if (neighbors[i].x == kNx && neighbors[i].y == kNy) {
-            if (neighbors[i].alive) {
-              ++alive_neighbors;
-            }
-            break;
-          }
-        }
+      if (neighbor_alive) {
+        ++alive_neighbors;
       }
     }
   }
@@ -76,9 +96,27 @@ __global__ void GameOfLifeKernel(Cell* agents, int num_agents, Cell* neighbors,
     // Dead cell becomes alive with exactly 3 neighbors
     cell.next_alive = (alive_neighbors == 3);
   }
+}
 
-  // Apply next state immediately (synchronous update within timestep)
-  cell.alive = cell.next_alive;
+/**
+ * @brief CUDA kernel to apply computed next states to current states.
+ *
+ * This separate kernel ensures synchronous update semantics by applying
+ * all next_alive states to alive states after all cells have computed
+ * their next states. This prevents race conditions where a cell might
+ * read a neighbor's updated state during the same timestep.
+ *
+ * @param agents Device array of cells to update
+ * @param num_agents Number of cells
+ */
+__global__ void ApplyNextStateKernel(Cell* agents, int num_agents) {
+  const int kIdx = blockIdx.x * blockDim.x + threadIdx.x;
+
+  if (kIdx >= num_agents) {
+    return;
+  }
+
+  agents[kIdx].alive = agents[kIdx].next_alive;
 }
 
 GameOfLifeModel::GameOfLifeModel(int width, int height)
@@ -91,4 +129,9 @@ GameOfLifeModel::GameOfLifeModel(int width, int height)
 GameOfLifeModel::InteractionRuleCUDA GameOfLifeModel::GetInteractionKernel()
     const {
   return GameOfLifeKernel;
+}
+
+GameOfLifeModel::PostProcessKernelCUDA GameOfLifeModel::GetPostProcessKernel()
+    const {
+  return ApplyNextStateKernel;
 }
