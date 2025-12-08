@@ -21,8 +21,12 @@ add_executable(game_of_life_gpu_time
   ${GAMEOFLIFE_GPU_TIME_CPP_SOURCES}
   ${GAMEOFLIFE_GPU_TIME_CUDA_SOURCES})
 
-# Set C++20 standard
+# Set C++20 standard for C++ files
 target_compile_features(game_of_life_gpu_time PRIVATE cxx_std_20)
+
+# Set CUDA standard to C++17 (CUDA doesn't support C++20 yet)
+set_property(TARGET game_of_life_gpu_time PROPERTY CUDA_STANDARD 17)
+set_property(TARGET game_of_life_gpu_time PROPERTY CUDA_STANDARD_REQUIRED ON)
 
 # Set CUDA architecture (adjust for your GPU)
 set_property(TARGET game_of_life_gpu_time PROPERTY CUDA_ARCHITECTURES 75 80 86)

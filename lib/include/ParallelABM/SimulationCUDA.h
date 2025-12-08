@@ -80,10 +80,10 @@ inline void CheckCudaError(cudaError_t result, const char* operation) {
  * @see ModelCUDA CUDA interaction rule implementation
  */
 template <typename AgentType>
-class SimulationCUDA : public Simulation<ModelCUDA<AgentType>> {
+class SimulationCUDA : public Simulation<AgentType, ModelCUDA<AgentType>> {
  public:
   // Inherit base class constructors
-  using Simulation<ModelCUDA<AgentType>>::Simulation;
+  using Simulation<AgentType, ModelCUDA<AgentType>>::Simulation;
 
   // Copy constructor - deleted (inherited from base class semantics)
   SimulationCUDA(const SimulationCUDA&) = delete;
@@ -107,7 +107,7 @@ class SimulationCUDA : public Simulation<ModelCUDA<AgentType>> {
    *
    * @param local_region Pointer to the local region containing agents
    */
-  void LaunchModel(LocalRegion* local_region) override;
+  void LaunchModel(ParallelABM::LocalRegion<AgentType>* local_region) override;
 
   ~SimulationCUDA() override = default;
 
@@ -128,14 +128,15 @@ class SimulationCUDA : public Simulation<ModelCUDA<AgentType>> {
 };
 
 template <typename AgentType>
-void SimulationCUDA<AgentType>::LaunchModel(LocalRegion* local_region) {
+void SimulationCUDA<AgentType>::LaunchModel(
+    ParallelABM::LocalRegion<AgentType>* local_region) {
   const auto kNumGpus = this->environment.GetNumberOfGPUs();
 
   // Split local region into subregions (one per GPU)
-  std::vector<LocalSubRegion> subregions =
+  std::vector<ParallelABM::LocalSubRegion<AgentType>> subregions =
       this->space_->SplitLocalRegion(*local_region, static_cast<int>(kNumGpus));
 
-  std::vector<Agent>& all_agents = local_region->GetAgents();
+  std::vector<AgentType>& all_agents = local_region->GetAgents();
   const auto& neighbors = local_region->GetNeighbors();
   const int kNumNeighbors = static_cast<int>(neighbors.size());
 
@@ -236,7 +237,7 @@ void SimulationCUDA<AgentType>::LaunchModel(LocalRegion* local_region) {
         (ctx.num_agents + kThreadsPerBlock - 1) / kThreadsPerBlock;
 
     // Get the interaction kernel and launch it
-    auto kernel = this->model.GetInteractionKernel();
+    auto kernel = this->model->GetInteractionKernel();
     kernel<<<kNumBlocks, kThreadsPerBlock, 0, ctx.stream>>>(
         ctx.d_agents, ctx.num_agents, ctx.d_neighbors, ctx.num_neighbors);
 

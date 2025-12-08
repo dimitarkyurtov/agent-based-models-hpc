@@ -1,7 +1,7 @@
-#include "GameOfLifeSimulation.h"
-
 #include <memory>
 #include <utility>
+
+#include "GameOfLifeSimulation.h"
 
 GameOfLifeSimulation::GameOfLifeSimulation(
     int& argc, char**& argv, std::unique_ptr<Space<Cell>> space,

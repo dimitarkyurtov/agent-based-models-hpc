@@ -6,11 +6,6 @@
 #include "Cell.h"
 
 /**
- * @brief CUDA kernel function pointer type for Game of Life
- */
-using GameOfLifeKernel = void (*)(Cell*, int, Cell*, int, int, int);
-
-/**
  * @class GameOfLifeModel
  * @brief CUDA-based Game of Life model implementing Conway's rules on GPU.
  *
