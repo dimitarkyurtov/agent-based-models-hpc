@@ -32,7 +32,7 @@ target_include_directories(game_of_life_cpu_ui
 # Link against required libraries
 target_link_libraries(game_of_life_cpu_ui
   PRIVATE
-    game_of_life_common
+    game_of_life_cpu_common
     OpenGL::GL
     glfw
     imgui

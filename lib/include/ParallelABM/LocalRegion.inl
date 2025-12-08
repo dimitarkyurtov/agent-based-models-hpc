@@ -4,7 +4,7 @@
 namespace ParallelABM {
 
 // LocalRegion implementation
-template <typename AgentT>
+template <typename AgentT> // NOLINT(cppcoreguidelines-pro-type-member-init, hicpp-member-init) - Members initialized via move
 LocalRegion<AgentT>::LocalRegion(int region_id, std::vector<AgentT> agents,
                                   std::vector<AgentT> neighbors)
     : region_id_(region_id),
@@ -37,7 +37,7 @@ void LocalRegion<AgentT>::SetNeighbors(std::vector<AgentT> neighbors) {
 }
 
 // LocalSubRegion implementation
-template <typename AgentT>
+template <typename AgentT> // NOLINT(cppcoreguidelines-pro-type-member-init, hicpp-member-init) - Members initialized via move
 LocalSubRegion<AgentT>::LocalSubRegion(
     std::vector<int> indices, LocalRegion<AgentT>* local_region,
     std::vector<int> neighbor_indices)

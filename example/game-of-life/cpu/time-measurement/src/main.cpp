@@ -6,7 +6,7 @@
  * for CPU performance measurement without visualization.
  */
 
-#include <ParallelABM/LocalEnvironmentCPU.h>
+#include <ParallelABM/LocalEnvironment.h>
 #include <ParallelABM/Logger.h>
 #include <mpi.h>
 
@@ -101,7 +101,7 @@ int main(int argc, char* argv[]) {
       return 1;
     }
 
-    ParallelABM::LocalEnvironmentCPU environment(num_threads);
+    ParallelABM::LocalEnvironment environment(num_threads);
 
     auto space =
         std::make_unique<GameOfLifeSpace>(kWidth, kHeight, kDensity, init_mode);

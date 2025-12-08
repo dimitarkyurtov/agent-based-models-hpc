@@ -1,59 +1,53 @@
 /**
  * @file main.cpp
- * @brief Game of Life example using the ParallelABM library.
+ * @brief Game of Life GPU time measurement example.
  *
- * Demonstrates Conway's Game of Life simulation with ImGui-based
- * visualization using the ParallelABM library's CPU simulation capabilities.
+ * Demonstrates Conway's Game of Life simulation using the ParallelABM library
+ * for GPU performance measurement with CUDA acceleration.
  */
 
 #include <ParallelABM/LocalEnvironment.h>
+#include <ParallelABM/Logger.h>
+#include <mpi.h>
 
+#include <chrono>
 #include <cstdlib>
 #include <iostream>
 #include <memory>
 #include <string>
 
+#include "Cell.h"
 #include "GameOfLifeModel.h"
 #include "GameOfLifeSimulation.h"
 #include "GameOfLifeSpace.h"
-#include "Renderer.h"
 
 namespace {
 
 /// Grid width
-constexpr int kWidth = 100;
+constexpr int kWidth = 1'000;
 
 /// Grid height
-constexpr int kHeight = 40;
+constexpr int kHeight = 1'000;
 
-/// Initial alive cell density (not used with deterministic patterns)
+/// Initial alive cell density
 constexpr double kDensity = 0.3;
 
 /// Number of timesteps
 constexpr int kTimesteps = 1'000;
 
-/// Frame delay in milliseconds
-constexpr int kFrameDelayMs = 40;
-
-/// Window width
-constexpr int kWindowWidth = 1280;
-
-/// Window height
-constexpr int kWindowHeight = 720;
-
-/// Default number of threads
-constexpr int kDefaultThreads = 1;
+/// Default number of GPUs
+constexpr int kDefaultGPUs = 1;
 
 /**
  * @brief Print usage information to stderr.
  * @param program_name Name of the executable
  */
 void PrintUsage(const char* program_name) {
-  std::cerr << "Usage: " << program_name << " [num_threads] [init_mode]\n"
+  std::cerr << "Usage: " << program_name << " [num_devices] [init_mode]\n"
             << "\n"
             << "Arguments:\n"
-            << "  num_threads - Number of threads to use (default: "
-            << kDefaultThreads << ")\n"
+            << "  num_devices - Number of GPU devices to use (default: "
+            << kDefaultGPUs << ")\n"
             << "  init_mode   - Initialization mode: 'random' or 'predefined' "
                "(default: predefined)\n";
 }
@@ -61,11 +55,11 @@ void PrintUsage(const char* program_name) {
 }  // namespace
 
 /**
- * @brief Main entry point for the Game of Life simulation.
+ * @brief Main entry point for Game of Life GPU time measurement.
  *
- * Parses the number of threads from command line arguments,
- * initializes the simulation environment with deterministic patterns,
- * sets up the renderer, and runs the simulation with visualization.
+ * Parses the number of GPUs from command line arguments,
+ * initializes the simulation environment, runs the simulation,
+ * and reports the execution time.
  *
  * @param argc Argument count
  * @param argv Argument values
@@ -73,7 +67,10 @@ void PrintUsage(const char* program_name) {
  */
 int main(int argc, char* argv[]) {
   try {
-    int num_threads = kDefaultThreads;
+    ParallelABM::Logger::GetInstance().SetLogLevel(
+        ParallelABM::LogLevel::kFatal);
+
+    int num_devices = kDefaultGPUs;
     InitializationMode init_mode = InitializationMode::kPredefined;
 
     if (argc > 1) {
@@ -81,7 +78,7 @@ int main(int argc, char* argv[]) {
         PrintUsage(argv[0]);
         return 0;
       }
-      num_threads = std::atoi(argv[1]);
+      num_devices = std::atoi(argv[1]);
     }
 
     if (argc > 2) {
@@ -98,19 +95,15 @@ int main(int argc, char* argv[]) {
       }
     }
 
-    if (num_threads <= 0) {
-      std::cerr << "Error: Number of threads must be positive.\n";
+    if (num_devices <= 0) {
+      std::cerr << "Error: Number of devices must be positive.\n";
       PrintUsage(argv[0]);
       return 1;
     }
 
-    Renderer renderer(kWidth, kHeight, kWindowWidth, kWindowHeight);
-    if (!renderer.Setup()) {
-      std::cerr << "Error: Failed to setup renderer.\n";
-      return 1;
-    }
-
-    ParallelABM::LocalEnvironment environment(num_threads);
+    // Create environment with 0 CPU cores (GPU-only) and specified GPU count
+    ParallelABM::LocalEnvironment environment(
+        0, static_cast<std::uint32_t>(num_devices));
 
     auto space =
         std::make_unique<GameOfLifeSpace>(kWidth, kHeight, kDensity, init_mode);
@@ -119,10 +112,29 @@ int main(int argc, char* argv[]) {
     auto model = std::make_shared<GameOfLifeModel>(kWidth, kHeight);
 
     GameOfLifeSimulation simulation(argc, argv, std::move(space), model,
-                                    environment, renderer,
-                                    std::chrono::milliseconds(kFrameDelayMs));
+                                    environment);
+
+    auto start_time = std::chrono::high_resolution_clock::now();
 
     simulation.Start(kTimesteps);
+
+    auto end_time = std::chrono::high_resolution_clock::now();
+
+    int rank = 0;
+    MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+
+    if (rank == 0) {
+      auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(
+          end_time - start_time);
+
+      std::cout << "\nExecution completed\n"
+                << "===================\n"
+                << "Total time: " << duration.count() << " ms\n"
+                << "Average time per timestep: "
+                << (static_cast<double>(duration.count()) /
+                    static_cast<double>(kTimesteps))
+                << " ms\n";
+    }
 
     return 0;
   } catch (const std::exception& e) {

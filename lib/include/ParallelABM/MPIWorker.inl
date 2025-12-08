@@ -12,14 +12,15 @@
 #include "ParallelABM/Logger.h"
 #include "ParallelABM/MPINode.h"
 
-template <typename AgentT>
+template <typename AgentT> // NOLINT(cppcoreguidelines-pro-type-member-init, hicpp-member-init) - Members initialized via move
 MPIWorker<AgentT>::MPIWorker(int rank)
-    : MPINode(rank), local_region_(nullptr) {}
+    : MPINode(rank), local_region_() {}
 
-template <typename AgentT>
+template <typename AgentT> // NOLINT(cppcoreguidelines-pro-type-member-init, hicpp-member-init) - Members initialized via move
 MPIWorker<AgentT>::MPIWorker(
     int rank, std::unique_ptr<ParallelABM::LocalRegion<AgentT>> region)
-    : MPINode(rank), local_region_(std::move(region)) {}
+    : MPINode(rank),
+      local_region_(std::move(region)) {}
 
 template <typename AgentT>
 ParallelABM::LocalRegion<AgentT>* MPIWorker<AgentT>::GetLocalRegion()

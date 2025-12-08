@@ -1,9 +1,6 @@
 # Find MPI package
 find_package(MPI REQUIRED)
 
-# Option to enable CUDA support
-option(CUDA "Enable CUDA support for GPU simulations" OFF)
-
 # Collect source files (exclude template implementations moved to .inl)
 file(GLOB PARALLELABM_SOURCES "${CMAKE_CURRENT_SOURCE_DIR}/src/*.cpp")
 list(FILTER PARALLELABM_SOURCES EXCLUDE REGEX ".*MPIStub\\.cpp$")

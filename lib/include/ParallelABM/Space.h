@@ -51,14 +51,14 @@ class Space {
    private:
     /// Indices of agents in the space's agents vector that belong to this
     /// region
-    std::vector<int> indices_;
+    std::vector<int> indices_{};  // NOLINT(readability-redundant-member-init)
 
     /// Unique identifier for this region
     int region_id_ = 0;
 
     /// Neighbor agents from other regions that interact with agents in this
     /// region (stored by value for efficient MPI communication)
-    std::vector<AgentT> neighbors_;
+    std::vector<AgentT> neighbors_{};
 
    public:
     /**
@@ -71,7 +71,11 @@ class Space {
      * @param region_id The unique identifier for this region
      * @param agent_indices The indices of agents that belong to this region
      */
-    Region(int region_id, std::vector<int> agent_indices)
+    Region(int region_id,
+           std::vector<int>
+               agent_indices)  // NOLINT(cppcoreguidelines-pro-type-member-init,
+                               // hicpp-member-init) - Members
+                               // initialized via move
         : indices_(std::move(agent_indices)),
           region_id_(region_id),
           neighbors_() {}

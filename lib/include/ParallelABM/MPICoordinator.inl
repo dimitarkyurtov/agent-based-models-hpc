@@ -14,10 +14,13 @@
 #include "ParallelABM/MPIWorker.h"
 #include "ParallelABM/Space.h"
 
-template <typename AgentT>
+template <typename AgentT> // NOLINT(cppcoreguidelines-pro-type-member-init, hicpp-member-init) - Members initialized via move
 MPICoordinator<AgentT>::MPICoordinator(int rank, int num_processes,
                                        std::shared_ptr<Space<AgentT>> space)
-    : MPIWorker<AgentT>(rank), num_processes_(num_processes), space_(space) {
+    : MPIWorker<AgentT>(rank),
+      num_processes_(num_processes),
+      space_(space),
+      regions_() {
   this->space_->Initialize();
 
   regions_ = space_->SplitIntoRegions(num_processes_);

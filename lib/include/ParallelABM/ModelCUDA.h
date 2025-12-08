@@ -127,7 +127,7 @@ class ModelCUDA : public Model {
    *
    * @return Function pointer to the CUDA __global__ kernel
    */
-  virtual InteractionRuleCUDA GetInteractionKernel() const = 0;
+  [[nodiscard]] virtual InteractionRuleCUDA GetInteractionKernel() const = 0;
 };
 
 #endif  // PARALLELABM_MODELCUDA_H

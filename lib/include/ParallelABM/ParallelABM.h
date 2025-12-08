@@ -15,7 +15,11 @@
 
 // Model implementations
 #include "ParallelABM/ModelCPU.h"
+
+#ifdef PARALLELABM_CUDA_ENABLED
 #include "ParallelABM/ModelCUDA.h"
+#include "ParallelABM/SimulationCUDA.h"
+#endif
 
 // MPI components
 #include "ParallelABM/MPICoordinator.h"

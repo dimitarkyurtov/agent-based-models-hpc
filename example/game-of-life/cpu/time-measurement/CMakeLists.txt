@@ -23,7 +23,7 @@ target_include_directories(game_of_life_cpu_time
 # Link against required libraries
 target_link_libraries(game_of_life_cpu_time
   PRIVATE
-    game_of_life_common
+    game_of_life_cpu_common
 )
 
 # Set output directory
