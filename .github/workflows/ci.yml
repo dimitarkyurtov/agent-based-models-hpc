@@ -52,3 +52,43 @@ jobs:
           -w /workspace \
           mpi-nvidia-ubuntu:latest \
           bash -c "ls -lah build/ && ls -lah build/lib/ && ls -lah build/example/"
+
+    - name: Run test1 with 2 MPI processes and 2 threads
+      run: |
+        docker run --rm \
+          -v ${{ github.workspace }}:/workspace \
+          -w /workspace \
+          mpi-nvidia-ubuntu:latest \
+          bash -c "mpirun --allow-run-as-root -np 2 build/bin/test1 2 /tmp/test1.dat && python3 utils/compare_checkpoints.py tests/game-of-life/checkpoints/test1.dat /tmp/test1.dat"
+
+    - name: Run test2 with 2 MPI processes and 2 threads
+      run: |
+        docker run --rm \
+          -v ${{ github.workspace }}:/workspace \
+          -w /workspace \
+          mpi-nvidia-ubuntu:latest \
+          bash -c "mpirun --allow-run-as-root -np 2 build/bin/test2 2 /tmp/test2.dat && python3 utils/compare_checkpoints.py tests/game-of-life/checkpoints/test2.dat /tmp/test2.dat"
+
+    - name: Run test3 with 2 MPI processes and 2 threads
+      run: |
+        docker run --rm \
+          -v ${{ github.workspace }}:/workspace \
+          -w /workspace \
+          mpi-nvidia-ubuntu:latest \
+          bash -c "mpirun --allow-run-as-root -np 2 build/bin/test3 2 /tmp/test3.dat && python3 utils/compare_checkpoints.py tests/game-of-life/checkpoints/test3.dat /tmp/test3.dat"
+
+    - name: Run test4 with 2 MPI processes and 4 threads
+      run: |
+        docker run --rm \
+          -v ${{ github.workspace }}:/workspace \
+          -w /workspace \
+          mpi-nvidia-ubuntu:latest \
+          bash -c "mpirun --allow-run-as-root -np 2 build/bin/test4 4 /tmp/test4.dat && python3 utils/compare_checkpoints.py tests/game-of-life/checkpoints/test4.dat /tmp/test4.dat"
+
+    - name: Run test5 with 2 MPI processes and 2 threads
+      run: |
+        docker run --rm \
+          -v ${{ github.workspace }}:/workspace \
+          -w /workspace \
+          mpi-nvidia-ubuntu:latest \
+          bash -c "mpirun --allow-run-as-root -np 2 build/bin/test5 2 /tmp/test5.dat && python3 utils/compare_checkpoints.py tests/game-of-life/checkpoints/test5.dat /tmp/test5.dat"

@@ -16,7 +16,8 @@
       "Bash(do echo \"=== Checking $f ===\")",
       "Bash(cmake:*)",
       "Bash(make:*)",
-      "Bash(find:*)"
+      "Bash(find:*)",
+      "Bash(mkdir:*)"
     ],
     "deny": [],
     "ask": []

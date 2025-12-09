@@ -1,30 +1,8 @@
-include(FetchContent)
+# Test Suite
+#
+# Test applications for verifying simulations.
 
-# Fetch Google Test
-FetchContent_Declare(
-  googletest
-  GIT_REPOSITORY https://github.com/google/googletest.git
-  GIT_TAG v1.14.0
-)
+cmake_minimum_required(VERSION 3.14)
 
-# For Windows: Prevent overriding the parent project's compiler/linker settings
-set(gtest_force_shared_crt ON CACHE BOOL "" FORCE)
-FetchContent_MakeAvailable(googletest)
-
-# Enable testing
-include(GoogleTest)
-
-# Test executable
-add_executable(ParallelABM_tests
-  test_calculator.cpp
-)
-
-# Link against the library and Google Test
-target_link_libraries(ParallelABM_tests
-  PRIVATE
-    ParallelABM
-    GTest::gtest_main
-)
-
-# Discover tests
-gtest_discover_tests(ParallelABM_tests)
+# Add Game of Life test suite
+add_subdirectory(game-of-life)
