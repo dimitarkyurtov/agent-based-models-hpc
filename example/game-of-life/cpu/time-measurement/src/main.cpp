@@ -33,7 +33,7 @@ constexpr int kHeight = 1'000;
 constexpr double kDensity = 0.3;
 
 /// Number of timesteps
-constexpr int kTimesteps = 1'000;
+constexpr int kTimesteps = 100;
 
 /// Default number of threads
 constexpr int kDefaultThreads = 1;
@@ -109,8 +109,11 @@ int main(int argc, char* argv[]) {
 
     auto model = std::make_shared<GameOfLifeModel>(kWidth, kHeight);
 
+    // Disable automatic region syncing to eliminate communication overhead
+    // Regions will only be synced when explicitly requested (e.g., at
+    // checkpoints)
     GameOfLifeSimulation simulation(argc, argv, std::move(space), model,
-                                    environment);
+                                    environment, false);
 
     auto start_time = std::chrono::high_resolution_clock::now();
 

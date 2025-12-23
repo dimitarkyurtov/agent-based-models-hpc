@@ -21,11 +21,13 @@ class GameOfLifeSimulation : public ParallelABM::SimulationCPU<Cell> {
    * @param space The game space containing cells
    * @param model Shared pointer to the CPU model with interaction rules
    * @param environment Compute environment configuration
+   * @param sync_regions_every_timestep Whether to sync regions every timestep
    */
   GameOfLifeSimulation(int& argc, char**& argv,
                        std::unique_ptr<Space<Cell>> space,
                        std::shared_ptr<ModelCPU<Cell>> model,
-                       ParallelABM::Environment& environment);
+                       ParallelABM::Environment& environment,
+                       bool sync_regions_every_timestep = true);
 
   /**
    * @brief Virtual destructor.

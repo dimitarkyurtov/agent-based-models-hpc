@@ -57,13 +57,25 @@ void MPICoordinator<AgentT>::SendLocalRegionsToWorkers() {
         temp_agents.push_back(agents[kIndex]);
       }
 
-      // Send contiguous buffer (zero-copy from temp buffer)
-      MPI_Send(temp_agents.data(),
-               static_cast<int>(temp_agents.size() * sizeof(AgentT)), MPI_BYTE,
-               worker_rank, 0, MPI_COMM_WORLD);
+      // Send agents in chunks to avoid INT_MAX overflow
+      const std::size_t kTotalBytes = temp_agents.size() * sizeof(AgentT);
+      const std::size_t kMaxChunkBytes =
+          static_cast<std::size_t>(std::numeric_limits<int>::max());
+      const char* data_ptr = reinterpret_cast<const char*>(temp_agents.data());
+
+      std::size_t bytes_sent = 0;
+      while (bytes_sent < kTotalBytes) {
+        const std::size_t kChunkSize =
+            std::min(kMaxChunkBytes, kTotalBytes - bytes_sent);
+        MPI_Send(data_ptr + bytes_sent, static_cast<int>(kChunkSize), MPI_BYTE,
+                 worker_rank, 0, MPI_COMM_WORLD);
+        bytes_sent += kChunkSize;
+      }
+
       ParallelABM::Logger::GetInstance().Info(
           "MPICoordinator: Sent local region (" + std::to_string(kRegionSize) +
-          " agents) to worker " + std::to_string(worker_rank));
+          " agents, " + std::to_string(kTotalBytes) + " bytes) to worker " +
+          std::to_string(worker_rank));
     }
   }
 
@@ -102,11 +114,21 @@ void MPICoordinator<AgentT>::ReceiveLocalRegionsFromWorkers() {
       const typename Space<AgentT>::Region& region = regions_[worker_rank];
       const std::vector<int>& indices = region.GetIndices();
 
-      // Receive agents as contiguous array (zero-copy)
+      // Receive agents as contiguous array in chunks to avoid INT_MAX overflow
       std::vector<AgentT> temp_agents(region_size);
-      MPI_Recv(temp_agents.data(),
-               static_cast<int>(region_size * sizeof(AgentT)), MPI_BYTE,
-               worker_rank, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+      const std::size_t kTotalBytes = region_size * sizeof(AgentT);
+      const std::size_t kMaxChunkBytes =
+          static_cast<std::size_t>(std::numeric_limits<int>::max());
+      char* data_ptr = reinterpret_cast<char*>(temp_agents.data());
+
+      std::size_t bytes_received = 0;
+      while (bytes_received < kTotalBytes) {
+        const std::size_t kChunkSize =
+            std::min(kMaxChunkBytes, kTotalBytes - bytes_received);
+        MPI_Recv(data_ptr + bytes_received, static_cast<int>(kChunkSize),
+                 MPI_BYTE, worker_rank, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+        bytes_received += kChunkSize;
+      }
 
       // Copy received agents back into space's agents vector
       for (size_t i = 0; i < indices.size(); ++i) {
@@ -158,10 +180,22 @@ void MPICoordinator<AgentT>::SendNeighborsToWorkers() {
         std::to_string(worker_rank));
 
     if (kNumNeighbors > 0) {
-      // Send neighbors as contiguous array (zero-copy)
-      MPI_Send(updated_neighbors.data(),
-               static_cast<int>(kNumNeighbors * sizeof(AgentT)), MPI_BYTE,
-               worker_rank, 0, MPI_COMM_WORLD);
+      // Send neighbors in chunks to avoid INT_MAX overflow
+      const std::size_t kTotalBytes = kNumNeighbors * sizeof(AgentT);
+      const std::size_t kMaxChunkBytes =
+          static_cast<std::size_t>(std::numeric_limits<int>::max());
+      const char* data_ptr =
+          reinterpret_cast<const char*>(updated_neighbors.data());
+
+      std::size_t bytes_sent = 0;
+      while (bytes_sent < kTotalBytes) {
+        const std::size_t kChunkSize =
+            std::min(kMaxChunkBytes, kTotalBytes - bytes_sent);
+        MPI_Send(data_ptr + bytes_sent, static_cast<int>(kChunkSize), MPI_BYTE,
+                 worker_rank, 0, MPI_COMM_WORLD);
+        bytes_sent += kChunkSize;
+      }
+
       ParallelABM::Logger::GetInstance().Info(
           "MPICoordinator: Sent neighbors (" + std::to_string(kNumNeighbors) +
           " agents) to worker " + std::to_string(worker_rank));

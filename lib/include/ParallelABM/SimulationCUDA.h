@@ -82,8 +82,15 @@ inline void CheckCudaError(cudaError_t result, const char* operation) {
 template <typename AgentType>
 class SimulationCUDA : public Simulation<AgentType, ModelCUDA<AgentType>> {
  public:
-  // Inherit base class constructors
-  using Simulation<AgentType, ModelCUDA<AgentType>>::Simulation;
+  // Constructor with sync option
+  SimulationCUDA(int& argc, char**& argv,
+                 std::unique_ptr<Space<AgentType>> space,
+                 std::shared_ptr<ModelCUDA<AgentType>> model,
+                 ParallelABM::Environment& environment,
+                 bool sync_regions_every_timestep = true)
+      : Simulation<AgentType, ModelCUDA<AgentType>>(
+            argc, argv, std::move(space), model, environment,
+            sync_regions_every_timestep) {}
 
   // Copy constructor - deleted (inherited from base class semantics)
   SimulationCUDA(const SimulationCUDA&) = delete;

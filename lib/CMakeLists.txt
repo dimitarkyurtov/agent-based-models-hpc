@@ -26,7 +26,7 @@ target_compile_features(ParallelABM PUBLIC cxx_std_20)
 if(CUDA)
   set_target_properties(ParallelABM PROPERTIES
     CUDA_SEPARABLE_COMPILATION ON
-    CUDA_STANDARD 17
+    CUDA_STANDARD 20
     CUDA_STANDARD_REQUIRED ON
   )
   target_compile_definitions(ParallelABM PUBLIC PARALLELABM_CUDA_ENABLED)

@@ -35,8 +35,14 @@ namespace ParallelABM {
 template <typename AgentT>
 class SimulationCPU : public Simulation<AgentT, ModelCPU<AgentT>> {
  public:
-  // Inherit base class constructors
-  using Simulation<AgentT, ModelCPU<AgentT>>::Simulation;
+  // Constructor with sync option
+  SimulationCPU(int& argc, char**& argv, std::unique_ptr<Space<AgentT>> space,
+                std::shared_ptr<ModelCPU<AgentT>> model,
+                ParallelABM::Environment& environment,
+                bool sync_regions_every_timestep = true)
+      : Simulation<AgentT, ModelCPU<AgentT>>(argc, argv, std::move(space),
+                                             model, environment,
+                                             sync_regions_every_timestep) {}
 
   // Copy constructor - deleted (inherited from base class semantics)
   SimulationCPU(const SimulationCPU&) = delete;

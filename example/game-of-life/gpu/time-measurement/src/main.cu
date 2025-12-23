@@ -23,11 +23,9 @@
 
 namespace {
 
-/// Grid width
-constexpr int kWidth = 1'000;
+constexpr int kWidth = 5'000;
 
-/// Grid height
-constexpr int kHeight = 1'000;
+constexpr int kHeight = 5'000;
 
 /// Initial alive cell density
 constexpr double kDensity = 0.3;
@@ -112,7 +110,7 @@ int main(int argc, char* argv[]) {
     auto model = std::make_shared<GameOfLifeModel>(kWidth, kHeight);
 
     GameOfLifeSimulation simulation(argc, argv, std::move(space), model,
-                                    environment);
+                                    environment, false);
 
     auto start_time = std::chrono::high_resolution_clock::now();
 

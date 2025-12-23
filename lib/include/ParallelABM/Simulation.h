@@ -26,7 +26,8 @@ class Simulation {
   // Initialize MPI, space, model, and calculate this process's region
   Simulation(int& argc, char**& argv, std::unique_ptr<Space<AgentT>> space,
              std::shared_ptr<ModelType> model,
-             ParallelABM::Environment& environment);
+             ParallelABM::Environment& environment,
+             bool sync_regions_every_timestep = true);
 
   // Launch model computation on the local region.
   // Processes agents using the model's interaction rule.
@@ -47,6 +48,10 @@ class Simulation {
   // Execute simulation for given number of timesteps
   void Start(unsigned int timesteps);
 
+  // Explicitly synchronize regions between workers and coordinator
+  // Call this when you need the coordinator to have updated region data
+  void SyncRegions();
+
   // Copy constructor - deleted (simulation should not be copied)
   Simulation(const Simulation&) = delete;
 
@@ -63,18 +68,21 @@ class Simulation {
 
  protected:
   std::shared_ptr<Space<AgentT>>
-      space_;  // Shared ownership of simulation space
+      space_;                         // Shared ownership of simulation space
+  bool sync_regions_every_timestep_;  // Whether to sync regions every timestep
 };
 
 template <typename AgentT, typename ModelType>
 Simulation<AgentT, ModelType>::Simulation(int& argc, char**& argv,
                                           std::unique_ptr<Space<AgentT>> space,
                                           std::shared_ptr<ModelType> model,
-                                          ParallelABM::Environment& environment)
+                                          ParallelABM::Environment& environment,
+                                          bool sync_regions_every_timestep)
     : model(model),
       mpi_worker_(nullptr),
       environment(environment),
-      space_(std::move(space)) {
+      space_(std::move(space)),
+      sync_regions_every_timestep_(sync_regions_every_timestep) {
   MPI_Init(&argc, &argv);
 
   int rank = 0;
@@ -101,6 +109,19 @@ Simulation<AgentT, ModelType>::Simulation(int& argc, char**& argv,
 }
 
 template <typename AgentT, typename ModelType>
+void Simulation<AgentT, ModelType>::SyncRegions() {
+  auto* coordinator = dynamic_cast<MPICoordinator<AgentT>*>(mpi_worker_.get());
+
+  if (coordinator != nullptr) {
+    coordinator->ReceiveLocalRegionsFromWorkers();
+    coordinator->SendNeighborsToWorkers();
+  } else {
+    mpi_worker_->SendLocalRegionToLeader();
+    mpi_worker_->ReceiveNeighbors();
+  }
+}
+
+template <typename AgentT, typename ModelType>
 void Simulation<AgentT, ModelType>::Start(unsigned int timesteps) {
   auto* coordinator = dynamic_cast<MPICoordinator<AgentT>*>(mpi_worker_.get());
 
@@ -120,12 +141,9 @@ void Simulation<AgentT, ModelType>::Start(unsigned int timesteps) {
         mpi_worker_->GetLocalRegion();
     LaunchModel(local_region);
 
-    if (coordinator != nullptr) {
-      coordinator->ReceiveLocalRegionsFromWorkers();
-      coordinator->SendNeighborsToWorkers();
-    } else {
-      mpi_worker_->SendLocalRegionToLeader();
-      mpi_worker_->ReceiveNeighbors();
+    // Only sync regions if configured to do so
+    if (sync_regions_every_timestep_) {
+      SyncRegions();
     }
 
     OnTimeStepCompleted(step);

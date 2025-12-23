@@ -14,16 +14,12 @@ The test suite runs Game of Life simulations against pre-recorded checkpoints ta
 
 A Docker container is provided for building CUDA-enabled code on machines without NVIDIA GPUs or the CUDA toolkit installed locally. This enables development and compilation of GPU code without requiring local GPU hardware.
 
-### AI-Assisted Development
-
-This repository embraces AI-assisted development using Claude with sub-agents and MCP servers. The development workflow and tooling configuration can be explored in the repository's configuration files.
-
 ## Development
 
 ### Requirements
 
 - CMake 3.14+
-- C++17 compiler (GCC/Clang/MSVC)
+- C++20 compiler (GCC/Clang/MSVC)
 - OpenMPI
 - NVIDIA CUDA Toolkit (for GPU support)
 - clang-format, clang-tidy
