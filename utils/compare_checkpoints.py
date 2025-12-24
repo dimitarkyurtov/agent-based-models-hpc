@@ -66,7 +66,6 @@ def compare_checkpoint_files(file1, file2, verbose=False):
     print(f"  File 2: {file2}")
     print()
 
-    # Check if files exist
     file1_path = Path(file1)
     file2_path = Path(file2)
 
@@ -78,14 +77,12 @@ def compare_checkpoint_files(file1, file2, verbose=False):
         print(f"Error: File '{file2}' does not exist", file=sys.stderr)
         return False
 
-    # Parse checkpoint files
     checkpoints1 = parse_checkpoint_file(file1_path)
     checkpoints2 = parse_checkpoint_file(file2_path)
 
     if checkpoints1 is None or checkpoints2 is None:
         return False
 
-    # Check if both files have checkpoints
     if not checkpoints1 and not checkpoints2:
         print("Warning: Both files are empty")
         return True
@@ -108,7 +105,6 @@ def compare_checkpoint_files(file1, file2, verbose=False):
     print(f"Found {len(checkpoints1)} checkpoints in each file")
     print()
 
-    # Compare checkpoints
     all_match = True
     mismatches = []
 

@@ -19,7 +19,6 @@ GameOfLifeSimulation::GameOfLifeSimulation(
       checkpoint_count_(0) {}
 
 void GameOfLifeSimulation::Setup() {
-  // Call parent class Setup to initialize GPU contexts
   ParallelABM::SimulationCUDA<Cell>::Setup();
   setup_complete_time_ = std::chrono::high_resolution_clock::now();
 }
@@ -28,7 +27,6 @@ void GameOfLifeSimulation::LaunchModel(
     ParallelABM::LocalRegion<Cell>* local_region) {
   auto start = std::chrono::high_resolution_clock::now();
 
-  // Call parent GPU computation
   ParallelABM::SimulationCUDA<Cell>::LaunchModel(local_region);
 
   auto end = std::chrono::high_resolution_clock::now();

@@ -31,7 +31,7 @@ void GameOfLifeSpace::Initialize() {
       }
     }
   } else {
-    // Deterministic patterns for reproducible testing
+    // Deterministic patterns
     for (int y = 0; y < height_; ++y) {
       for (int x = 0; x < width_; ++x) {
         bool alive = false;
@@ -112,22 +112,18 @@ std::vector<Space<Cell>::Region> GameOfLifeSpace::SplitIntoRegions(
   int current_row = 0;
 
   for (int region_id = 0; region_id < num_regions; ++region_id) {
-    // Distribute extra rows among first few regions
     const int kRowsInRegion =
         kBaseRowsPerRegion + (region_id < kExtraRows ? 1 : 0);
 
     std::vector<int> indices;
     indices.reserve(static_cast<size_t>(kRowsInRegion * width_));
 
-    // Add all cell indices for rows in this region
     for (int row = current_row; row < current_row + kRowsInRegion; ++row) {
       for (int col = 0; col < width_; ++col) {
         indices.push_back(CoordToIndex(col, row));
       }
     }
 
-    // Neighbors are now calculated dynamically via GetRegionNeighbours
-    // on each timestep, not during region creation
     regions.emplace_back(region_id, std::move(indices));
     current_row += kRowsInRegion;
   }
@@ -139,21 +135,17 @@ std::vector<Cell> GameOfLifeSpace::GetRegionNeighbours(
     const Region& region) const {
   const std::vector<int>& indices = region.GetIndices();
 
-  // Early return if region has no agents
   if (indices.empty()) {
     return {};
   }
 
   std::vector<Cell> neighbors;
 
-  // Determine the first and last row of this region
-  // Indices are stored in row-major order (y * width_ + x)
   const int kFirstIndex = indices.front();
   const int kLastIndex = indices.back();
   const int kFirstRow = kFirstIndex / width_;
   const int kLastRow = kLastIndex / width_;
 
-  // Add cells from the row above this region (with toroidal wrap-around)
   int k_above_row = 0;
   if (kFirstRow > 0) {
     k_above_row = kFirstRow - 1;
@@ -166,7 +158,6 @@ std::vector<Cell> GameOfLifeSpace::GetRegionNeighbours(
     neighbors.push_back(agents[static_cast<size_t>(kIdx)]);
   }
 
-  // Add cells from the row below this region (with toroidal wrap-around)
   int k_below_row = 0;
   if (kLastRow < height_ - 1) {
     k_below_row = kLastRow + 1;
@@ -293,17 +284,14 @@ void GameOfLifeSpace::Serialize(std::ostream& os, int step) const {
     grid_state.push_back(kCellState);
   }
 
-  // Compute SHA-256 hash
   unsigned char hash[SHA256_DIGEST_LENGTH];
   SHA256(grid_state.data(), grid_state.size(), hash);
 
-  // Convert hash to hex string
   std::ostringstream hash_hex;
   hash_hex << std::hex << std::setfill('0');
   for (unsigned char i : hash) {
     hash_hex << std::setw(2) << static_cast<int>(i);
   }
 
-  // Write step and hash on a single line
   os << step << " " << hash_hex.str() << "\n";
 }

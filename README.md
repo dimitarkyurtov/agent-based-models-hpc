@@ -4,11 +4,11 @@ A C++ library that abstracts the complexity of running agent-based model simulat
 
 ### Examples
 
-The repository includes a Game of Life implementation demonstrating the library's usage for building agent-based models. Both CPU and GPU example applications are provided for performance measurement and parallelism speedup analysis. Each example includes its own README with detailed usage instructions.
+The repository includes a Game of Life example demonstrating the library's usage for building agent-based models. Both CPU and GPU example applications are provided for performance measurement and parallelism speedup analysis. Each example includes its own README with usage instructions.
 
 ### Testing
 
-The test suite runs Game of Life simulations against pre-recorded checkpoints taken every 50 steps. Each test verifies simulation correctness by comparing the hashed state of the entire simulation space at each checkpoint, ensuring the simulation produces expected results across different configurations.
+The test suite runs Game of Life simulations against pre-recorded checkpoints taken every 50 steps. Each test verifies simulation correctness by comparing the hashed state of simulation space at each checkpoint, ensuring the simulation produces the expected results across different configurations.
 
 ### Docker Support
 

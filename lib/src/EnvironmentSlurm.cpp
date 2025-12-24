@@ -32,16 +32,13 @@ std::optional<std::uint32_t> EnvironmentSlurm::GetEnvAsUInt(
   }
 
   try {
-    // Parse the environment variable value as unsigned long
     char* end_ptr = nullptr;  // NOLINT(misc-const-correctness)
     std::uint64_t parsed_value = std::strtoul(env_value, &end_ptr, 10);
 
-    // Check if parsing was successful and entire string was consumed
     if (end_ptr == env_value || *end_ptr != '\0') {
       return std::nullopt;
     }
 
-    // Check for overflow when converting to uint32_t
     if (parsed_value > UINT32_MAX) {
       return std::nullopt;
     }

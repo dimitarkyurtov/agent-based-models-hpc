@@ -36,7 +36,6 @@ void LocalRegion<AgentT>::SetNeighbors(std::vector<AgentT> neighbors) {
   neighbors_ = std::move(neighbors);
 }
 
-// LocalSubRegion implementation
 template <typename AgentT> // NOLINT(cppcoreguidelines-pro-type-member-init, hicpp-member-init) - Members initialized via move
 LocalSubRegion<AgentT>::LocalSubRegion(
     std::vector<int> indices, LocalRegion<AgentT>* local_region,

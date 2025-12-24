@@ -89,8 +89,6 @@ void MPIWorker<AgentT>::ReceiveLocalRegion() {
         " agents, " + std::to_string(kTotalBytes) + " bytes) from coordinator");
   }
 
-  // Create LocalRegion with empty neighbors (will be set later via
-  // ReceiveNeighbors)
   local_region_ = std::make_unique<ParallelABM::LocalRegion<AgentT>>(
       region_id, std::move(agents), std::vector<AgentT>{});
 }

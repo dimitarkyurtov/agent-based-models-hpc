@@ -2,7 +2,7 @@
 
 #include "GameOfLifeModel.h"
 
-// Global constants for grid dimensions (accessible from device code)
+// Global constants for grid dimensions (accessible from device)
 __constant__ int d_grid_width;
 __constant__ int d_grid_height;
 
@@ -24,7 +24,6 @@ __global__ void GameOfLifeKernel(Cell* agents, int num_agents, Cell* neighbors,
                                  int num_neighbors) {
   const int kIdx = blockIdx.x * blockDim.x + threadIdx.x;
 
-  // Bounds check
   if (kIdx >= num_agents) {
     return;
   }
@@ -32,49 +31,35 @@ __global__ void GameOfLifeKernel(Cell* agents, int num_agents, Cell* neighbors,
   Cell& cell = agents[kIdx];
   int alive_neighbors = 0;
 
-  // Calculate current cell's position in row-major layout
-  // agents are stored as: row0_cells, row1_cells, ..., rowN_cells
   const int kLocalRow = kIdx / d_grid_width;
   const int kCol = kIdx % d_grid_width;
 
-  // Calculate total number of rows in this region
   const int kNumRows = num_agents / d_grid_width;
 
-  // Count alive neighbors in 3x3 neighborhood (excluding self)
   for (int dy = -1; dy <= 1; ++dy) {
     for (int dx = -1; dx <= 1; ++dx) {
       if (dx == 0 && dy == 0) {
         continue;  // Skip self
       }
 
-      // Calculate neighbor column with toroidal wrapping
       const int kNeighborCol = (kCol + dx + d_grid_width) % d_grid_width;
 
-      // Calculate neighbor row (local to this region)
       const int kNeighborLocalRow = kLocalRow + dy;
 
       bool neighbor_alive = false;
 
       if (kNeighborLocalRow >= 0 && kNeighborLocalRow < kNumRows) {
-        // Neighbor is within this region's agents array
         // Use row-major indexing for O(1) access
         const int kNeighborIdx =
             kNeighborLocalRow * d_grid_width + kNeighborCol;
         neighbor_alive = agents[kNeighborIdx].alive;
       } else {
-        // Neighbor is in the boundary (neighbors array)
-        // neighbors array structure: [upper_boundary_row | lower_boundary_row]
-        // upper_boundary_row is at neighbors[0..width-1]
-        // lower_boundary_row is at neighbors[width..2*width-1]
-
         if (kNeighborLocalRow < 0) {
-          // Upper boundary (row above first row)
           const int kNeighborIdx = kNeighborCol;
           if (kNeighborIdx < num_neighbors) {
             neighbor_alive = neighbors[kNeighborIdx].alive;
           }
         } else {
-          // Lower boundary (row below last row)
           const int kNeighborIdx = d_grid_width + kNeighborCol;
           if (kNeighborIdx < num_neighbors) {
             neighbor_alive = neighbors[kNeighborIdx].alive;
@@ -88,12 +73,10 @@ __global__ void GameOfLifeKernel(Cell* agents, int num_agents, Cell* neighbors,
     }
   }
 
-  // Apply Conway's Game of Life rules
+  // Game of Life rules
   if (cell.alive) {
-    // Alive cell survives with 2 or 3 neighbors
     cell.next_alive = (alive_neighbors == 2 || alive_neighbors == 3);
   } else {
-    // Dead cell becomes alive with exactly 3 neighbors
     cell.next_alive = (alive_neighbors == 3);
   }
 }

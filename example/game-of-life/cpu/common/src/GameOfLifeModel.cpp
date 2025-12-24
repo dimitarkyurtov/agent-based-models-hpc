@@ -31,7 +31,7 @@ void GameOfLifeModel::ComputeInteractions(
     for (int dy = -1; dy <= 1; ++dy) {
       for (int dx = -1; dx <= 1; ++dx) {
         if (dx == 0 && dy == 0) {
-          continue;  // Skip self
+          continue;
         }
 
         const int kNx = (cell.x + dx + width_) % width_;
@@ -46,12 +46,10 @@ void GameOfLifeModel::ComputeInteractions(
       }
     }
 
-    // Apply Game of Life rules
+    // Game of Life rules
     if (cell.alive) {
-      // Alive cell survives with 2 or 3 neighbors
       cell.next_alive = (alive_neighbors == 2 || alive_neighbors == 3);
     } else {
-      // Dead cell becomes alive with exactly 3 neighbors
       cell.next_alive = (alive_neighbors == 3);
     }
   }

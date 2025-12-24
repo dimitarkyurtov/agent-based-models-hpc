@@ -244,12 +244,10 @@ void SimulationCUDA<AgentType>::LaunchModel(
   for (auto& ctx : contexts) {
     CheckCudaError(cudaSetDevice(ctx.device_id), "cudaSetDevice");
 
-    // Get device properties for optimal kernel configuration
     cudaDeviceProp device_props;
     CheckCudaError(cudaGetDeviceProperties(&device_props, ctx.device_id),
                    "cudaGetDeviceProperties");
 
-    // Configure kernel launch parameters for maximum occupancy
     const int kMaxThreadsPerBlock = device_props.maxThreadsPerBlock;
     const int kThreadsPerBlock = (ctx.num_agents < kMaxThreadsPerBlock)
                                      ? ctx.num_agents

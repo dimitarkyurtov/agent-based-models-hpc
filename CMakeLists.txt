@@ -1,67 +1,52 @@
 cmake_minimum_required(VERSION 3.14)
 
-# Option to enable CUDA (must be set before project())
 option(CUDA "Enable CUDA support for GPU simulations" OFF)
 
-# Configure CUDA host compiler before project()
 if(CUDA)
-  # Ensure nvcc uses the same C++ compiler
   if(NOT DEFINED CMAKE_CUDA_HOST_COMPILER)
     set(CMAKE_CUDA_HOST_COMPILER ${CMAKE_CXX_COMPILER})
   endif()
 endif()
 
-# Configure project languages based on CUDA option
 if(CUDA)
   project(ParallelABMProject VERSION 1.0.0 LANGUAGES CXX CUDA)
 else()
   project(ParallelABMProject VERSION 1.0.0 LANGUAGES CXX)
 endif()
 
-# Set C++ standard
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
-# Set CUDA standard if CUDA is enabled
 if(CUDA)
   set(CMAKE_CUDA_STANDARD 20)
   set(CMAKE_CUDA_STANDARD_REQUIRED ON)
   set(CMAKE_CUDA_EXTENSIONS OFF)
 
-  # Pass C++20 flag to nvcc's host compiler
   set(CMAKE_CUDA_FLAGS "${CMAKE_CUDA_FLAGS} -std=c++20")
 endif()
 
-# Export compile commands for clang-tidy
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
-# Add compiler warnings
 if(MSVC)
   add_compile_options(/W4)
 else()
   add_compile_options(-Wall -Wextra -Wpedantic)
 endif()
 
-# Option to enable/disable testing
 option(BUILD_TESTING "Build tests" ON)
 
-# Find required packages
 find_package(Threads REQUIRED)
 
-# Add external dependencies
 add_subdirectory(external/imgui-cmake)
 
-# Add BS::thread_pool as an interface library (header-only)
 add_library(ThreadPool INTERFACE)
 target_include_directories(ThreadPool INTERFACE ${CMAKE_CURRENT_SOURCE_DIR}/external/thread-pool/include)
 target_link_libraries(ThreadPool INTERFACE Threads::Threads)
 
-# Add subdirectories
 add_subdirectory(lib)
 add_subdirectory(example)
 
-# Add tests if enabled
 if(BUILD_TESTING)
   enable_testing()
   add_subdirectory(tests)

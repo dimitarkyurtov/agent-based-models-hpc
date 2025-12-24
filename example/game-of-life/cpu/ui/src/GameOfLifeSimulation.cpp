@@ -18,7 +18,6 @@ GameOfLifeSimulation::GameOfLifeSimulation(
       renderer_(renderer),
       frame_delay_(frame_delay),
       checkpoint_file_path_(checkpoint_file_path) {
-  // Create parent directory and open checkpoint file
   int rank = 0;
   MPI_Comm_rank(MPI_COMM_WORLD, &rank);
   if (rank == 0) {
@@ -40,7 +39,6 @@ void GameOfLifeSimulation::OnTimeStepCompleted(unsigned int timestep) {
     if (game_space != nullptr) {
       renderer_.Render(*game_space, timestep);
 
-      // Serialize every kCheckpointInterval steps to the single checkpoint file
       if (timestep % kCheckpointInterval == 0 && checkpoint_file_.is_open()) {
         game_space->Serialize(checkpoint_file_, static_cast<int>(timestep));
         checkpoint_file_.flush();

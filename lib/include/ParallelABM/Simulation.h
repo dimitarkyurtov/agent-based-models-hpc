@@ -90,14 +90,12 @@ Simulation<AgentT, ModelType>::Simulation(int& argc, char**& argv,
   MPI_Comm_rank(MPI_COMM_WORLD, &rank);
   MPI_Comm_size(MPI_COMM_WORLD, &num_processes);
 
-  // Initialize Logger with MPI rank and world size
   ParallelABM::Logger::GetInstance().Initialize(rank, num_processes);
   ParallelABM::Logger::GetInstance().Info(
       "Simulation: Initialized with rank " + std::to_string(rank) + " of " +
       std::to_string(num_processes) + " processes");
 
   if (rank == 0) {
-    // Coordinator inherits from MPIWorker
     mpi_worker_ =
         std::make_unique<MPICoordinator<AgentT>>(rank, num_processes, space_);
     ParallelABM::Logger::GetInstance().Info(
@@ -141,7 +139,6 @@ void Simulation<AgentT, ModelType>::Start(unsigned int timesteps) {
         mpi_worker_->GetLocalRegion();
     LaunchModel(local_region);
 
-    // Only sync regions if configured to do so
     if (sync_regions_every_timestep_) {
       SyncRegions();
     }

@@ -6,7 +6,6 @@
 
 namespace ParallelABM {
 
-// Forward declaration for the nested class
 template <typename AgentT>
 class LocalSubRegion;
 template <typename AgentT>
